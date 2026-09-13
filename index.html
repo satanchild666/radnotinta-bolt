@@ -1,0 +1,2695 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<title>RadnóTinta Bolt</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';</script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  *{box-sizing:border-box;font-family:Arial,sans-serif}
+  body{margin:0;padding:15px;background:#f0f2f5;}
+  .box{max-width:850px;margin:0 auto;background:#ffffff;padding:20px;border-radius:10px;box-shadow:0 4px 15px rgba(0,0,0,0.1)}
+  .header{background:#1e3c72;color:#fff;padding:12px;border-radius:6px;text-align:center;margin-bottom:15px}
+  .tabs{display:flex;gap:5px;margin-bottom:15px;flex-wrap:wrap}
+  .tab{flex:1;min-width:140px;padding:10px;border:none;background:#e4e6eb;font-weight:bold;border-radius:6px;cursor:pointer;font-size:14px}
+  .tab.active{background:#1877f2;color:#fff}
+  .card{background:#f7f8fa;border:1px solid #ddd;padding:15px;border-radius:6px;margin-bottom:15px}
+  input,textarea,button,select{width:100%;padding:10px;margin-top:5px;border:1px solid #ccc;border-radius:4px;font-size:15px}
+  .btn-green{background:#28a745;color:#fff;font-weight:bold;border:none;padding:12px;cursor:pointer;font-size:16px;margin-top:10px}
+  .btn-red{background:#dc3545;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;width:auto}
+  table{width:100%;border-collapse:collapse;margin-top:10px;background:#fff}
+  th,td{padding:8px;text-align:left;border:1px solid #ddd;font-size:13px;}
+  th{background:#eee}
+  .total{font-size:20px;font-weight:bold;text-align:right;color:#1877f2;margin-top:10px;padding:10px;background:#e7f3ff;border-radius:4px}
+  .barcode-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center; }
+  .barcode-content { background:#fff; padding:20px; border-radius:8px; width:400px; text-align:center; position:relative; }
+
+ @media print {
+    body * { visibility: hidden; }
+    .printable-friend-order, .printable-friend-order * { visibility: visible; }
+    .printable-friend-order { position: absolute; left: 0; top: 0; width: 100%; border: none !important; background: #fff !important; box-shadow: none !important; }
+    #bc-preview, #bc-preview * { visibility: visible; }
+    #bc-preview { position: absolute; left: 0; top: 0; width: 100%; border: none !important; background: #fff !important; }
+    #print-area, #print-area * { visibility: visible; }
+    #print-area { position: absolute; left: 0; top: 0; width: 100%; background: #fff !important; display: block !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="box">
+  <div class="header"><h2 style="margin:0">🐷 RadnóTinta Bolt — Domdom</h2></div>
+
+  <div class="tabs">
+    <button class="tab active" id="tb-pos" onclick="show('pos')">🛒 Eladás</button>
+    <button class="tab" id="tb-kassza" onclick="show('kassza')">💵 Kassza</button>
+    <button class="tab" id="tb-friends" onclick="show('friends')">👥 Félretett Csomagok</button>
+    <button class="tab" id="tb-inv" onclick="show('inv')">📦 Készlet</button>
+    <button class="tab" id="tb-add" onclick="show('add')">➕ Új Áru</button>
+    <button class="tab" id="tb-csomag" onclick="show('csomag')">🎁 Csomagok</button>
+</div>
+
+  <!-- ELADÁS TAB -->
+  <div id="p-pos">
+    <div class="card" style="background: #e8f5e9; border: 1px solid #c8e6c9;">
+      <label style="display:block; text-align:center; margin-bottom:5px;"><b>🟢 Fő Pénztár Szkenner Státusz:</b> Folyamatos olvasás aktív</label>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <input type="text" id="pos-focus-trap" placeholder="Ide tüzel a szkenner (Fő pénztár)..." onkeydown="handlePosContinuousScan(event)" style="background:#fff; border: 2px solid #28a745; text-align:center; font-weight:bold; margin-top:0; flex:1;">
+        <div style="width:90px;">
+          <label style="font-size:11px; font-weight:bold; display:block; margin-bottom:0;">Szorzó (db):</label>
+          <input type="number" id="pos-multiplier" value="1" min="1" style="background:#fff; border:2px solid #28a745; text-align:center; font-weight:bold; margin-top:0; padding:10px 5px;" title="Mennyiségi szorzó szkenneléshez">
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="background: #eef9ff; border: 1px solid #bce8f1;">
+      <b>🔎 Gyors Készlet & Vészhelyzeti Vonalkód / Cikkszám Kereső</b>
+      <input type="text" id="pos-quick-search" placeholder="Gépeld be vagy csippantsd be a vonalkódot / nevet..." oninput="updatePosQuickSearch()" style="background:#fff; margin-bottom:8px;">
+      <div id="pos-search-results" style="max-height: 150px; overflow-y: auto; background: #fff; border: 1px solid #ccc; border-radius: 4px; display: none; margin-bottom: 8px;"></div>
+      <div id="pos-selected-preview" style="text-align: center; background: #fff; padding: 10px; border-radius: 4px; display: none; border: 2px dashed #1877f2;">
+        <span id="pos-prev-info" style="font-size: 13px; font-weight: bold; display: block; margin-bottom: 6px;"></span>
+        <svg id="pos-prev-svg"></svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:10px;">
+        <b>🛒 Vevő Kosara (Fő Pénztár)</b>
+        <div style="display:flex; gap:8px; align-items:center; width:auto;">
+          <label style="font-size:12px; font-weight:bold; white-space:nowrap;">Teljes kosár kedvezmény (%):</label>
+          <input type="number" id="pos-discount-value" placeholder="%" value="0" onkeydown="handleGlobalDiscountKey(event)" onblur="applyCartDiscountDirect()" style="width:70px; padding:4px; margin-top:0; font-size:12px;">
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Név</th><th>Ár</th><th>Db</th><th>Kedv. (%)</th><th>Egységár</th><th>Össz</th><th>X</th></tr></thead>
+        <tbody id="cart-table"></tbody>
+      </table>
+      <div class="total">Fizetendő: <span id="cart-total">0</span> Ft</div>
+      <div class="card" style="margin-top: 10px; background: #fffbe6; padding: 15px; border-radius: 6px; font-size: 18px;">
+        <b>💵 Készpénz & Visszajáró</b>
+        <div style="margin-top: 10px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+          <span>Vevő adta:</span>
+          <input type="number" id="cash-given" placeholder="Összeg Ft" oninput="calculateChange()" style="width: 160px; padding: 10px; font-size: 18px;">
+          <span><b>Visszajáró:</b> <span id="change-amount" style="color: #d9534f; font-weight: bold; font-size: 22px;">0 Ft</span></span>
+        </div>
+      </div>
+      <button class="btn-green" onclick="pay('cash')">✅ KÉSZPÉNZES FIZETÉS & LEVONÁS</button>
+      <button onclick="pay('card')" style="background:#0275d8; color:white; padding:10px 15px; border:none; cursor:pointer; margin-top:5px; font-weight:bold; width:100%;">💳 Kártyás fizetés</button>
+      
+      <button type="button" id="btn-sztorno" class="btn btn-warning" onclick="sztornoAktivRendeles()" style="background:#f0ad4e; color:white; padding:10px 15px; border:none; cursor:pointer; margin-top:5px; font-weight:bold; width:100%;">
+        🔄 Utolsó Rendelés Sztornózása (Vissza készletbe & módosítás)
+      </button>
+    </div>
+
+    <div class="card" style="margin-top:15px; background:#f9f9f9; padding:15px; border-radius:5px;">
+      <b>📋 Napi Pénztárkezelés</b>
+      <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn-green" onclick="openDay()" style="margin-top:0;">Nyitás</button>
+          <button class="btn-red" onclick="closeDay()">Nap Zárása</button>
+          <button onclick="showHistoryModal()" style="background:#6c757d; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">Előzmény Kimutatás</button>
+      </div>
+      <div id="history-box" style="margin-top: 15px; background: #fff; padding: 15px; border: 1px solid #ccc; border-radius: 5px; max-height: 400px; overflow-y: auto; display: none;"></div>
+    </div>
+
+    <div class="card" style="margin-top:15px; background: #eef9ff; padding: 15px; border-radius: 8px;">
+      <b>💾 Adatmentés & Biztonság</b>
+      <div style="margin-top:10px; display: flex; gap: 10px; flex-wrap: wrap;">
+        <button onclick="exportData()" style="background-color: #0275d8; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width:auto;">💾 Mentés Fájlba (.json)</button>
+<button onclick="exportTeljesExcel()" style="background-color: #217346; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width:auto;">📊 Teljes Kimutatás (4 munkalap)</button>
+<button onclick="mentesHTMLBe()" style="background-color: #6a1b9a; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width:auto;">📦 Teljes Mentés HTML-be (MINDENT tartalmaz)</button>
+<button onclick="exportJSON()" style="background-color: #1e3c72; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width:auto;">🗄️ Teljes Biztonsági Mentés (.json)</button>
+        <label style="background-color: #5bc0de; color: white; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; display: inline-block; margin-top:5px;">
+          📂 Visszaállítás Fájlból
+          <input type="file" id="import-file" style="display: none;" onchange="importData(event)">
+        </label>
+        <button onclick="clearHistoryData()" style="background-color: #d9534f; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; width:auto; margin-top:5px;">🗑️ Előzmények Törlése</button>
+      </div>
+    </div>
+  </div>
+
+<!-- KASSZA TAB -->
+  <div id="p-kassza" style="display:none">
+    <div class="card" style="background:#eaf4ea;border:2px solid #4caf50;">
+      <b style="font-size:17px;">💵 Kassza Kezelő</b>
+      <div style="margin-top:10px;font-size:15px;line-height:1.8;">
+        📅 Nap nyitva: <b id="kassza-datum">— nincs nyitva —</b><br>
+        🌅 Nyitó kassza: <b id="kassza-nyito">0 Ft</b> |
+        💵 KP forgalom ma: <b id="kassza-forgalom">0 Ft</b><br>
+        💰 <span style="background:#fff8c4;padding:2px 8px;border-radius:4px;">Elvárt kasszatartalom: <b id="kassza-elvart">0 Ft</b></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <b>🔢 Címletenkénti számlálás — csak a DARABSZÁMOT írd be!</b>
+      <table>
+        <thead><tr><th>Címlet</th><th>Darab</th><th>Összeg</th></tr></thead>
+        <tbody id="cimlet-tbody"></tbody>
+      </table>
+      <div class="total">Számlált összeg: <span id="cimlet-osszeg">0</span> Ft</div>
+      <button class="btn-green" onclick="kasszaNyitas()" style="background:#2196f3;">🌅 NAP NYITÁSA — ez lesz a kassza kezdőállapota</button>
+      <button class="btn-red" onclick="kasszaZaras()" style="width:100%;padding:12px;font-size:16px;font-weight:bold;margin-top:8px;">🌙 NAPZÁRÁS & KASSZA-ELSZÁMOLÁS</button>
+      <div id="napzar-eredmeny" style="margin-top:14px;"></div>
+    </div>
+  </div>
+
+  <!-- FÉLRETETT CSOMAGOK TAB -->
+  <div id="p-friends" style="display:none">
+    <div class="card" style="background: #f3e5f5; border: 2px dashed #ab47bc;">
+      <h3 style="margin-top:0; color: #7b1fa2;">👥 Ismerősök / Barátok Félretett Csomagjai</h3>
+      <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <input type="text" id="new-friend-name" placeholder="Új ismerős neve..." style="background:#fff; margin-top:0;">
+        <button onclick="createNewFriendOrder()" style="background:#7b1fa2; color:#fff; font-weight:bold; border:none; padding:10px; cursor:pointer; border-radius:4px; width:180px; margin-top:0;">+ Új Ismerős</button>
+      </div>
+      <div id="friends-container"></div>
+    </div>
+  </div>
+
+  <!-- KÉSZLET TAB -->
+  <div id="p-inv" style="display:none">
+  <div id="cedula-tarca" class="card" style="background:#fff8e1;border:2px dashed #f0a500;">
+    <b>🏷️ Polccedula nyomtatas</b> — kattints a termekek melletti 🏷️ gombra, gyulemlnek ide:
+    <span id="cedula-db" style="font-weight:bold;">0</span> db a talcan.
+    <button onclick="cedulaNyomtat()" style="background:#f0a500;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-weight:bold;cursor:pointer;margin-left:8px;">🖨️ CEDULAK NYOMTATASA (A/4)</button>
+    <button onclick="cedulaLista = []; frissitCedulaTarca();" style="background:#999;color:#fff;border:none;border-radius:6px;padding:8px 14px;cursor:pointer;">Torles</button>
+<button onclick="mindetCedulara()" style="background:#17a2b8;color:#fff;font-weight:bold;border:none;padding:8px;margin:3px;cursor:pointer;border-radius:4px;">🏷️ ÖSSZES TERMÉK CÉDULÁJA (1 db)</button>
+  </div>
+
+    <div class="card" style="background: #e8f5e9; border: 1px solid #c8e6c9; text-align: center;">
+      <label><b>🟢 Készlet Szkenner / Kereső Státusz:</b> Folyamatos olvasás aktív</label>
+      <input type="text" id="inv-focus-trap" placeholder="Ide tüzel a szkenner (Készlet keresés)..." onkeydown="handleInvContinuousScan(event)" style="background:#fff; border: 2px solid #28a745; text-align:center; font-weight:bold;">
+    </div>
+
+    <div class="card">
+      <input type="text" id="inv-search" placeholder="🔎 Keresés a készletben (név, cikkszám vagy vonalkód)..." oninput="renderInv()" style="background:#fff;">
+      <button class="btn-green" onclick="openBarcodeModal()" style="background:#007bff; margin-top:10px; width:100%;">Címke Nyomtatása (10 db)</button>
+      
+      <div style="margin-top: 10px; background: #eef9ff; padding: 12px; border-radius: 6px; border: 1px dashed #1877f2;">
+        <b>📸 Tömeges Képfeltöltés (Cikkszám / Vonalkód alapján)</b>
+        <p style="font-size: 12px; color: #555; margin: 4px 0 8px 0;">Jelölj ki egyszerre több képfájlt (a fájlok neve legyen a termék Cikkszáma vagy Vonalkódja)!</p>
+        <label style="background-color: #1877f2; color: white; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; display: inline-block; font-size: 14px;">
+          📁 Képek kijelölése és tömeges illesztése
+          <input type="file" id="bulk-image-input" multiple accept="image/*" style="display: none;" onchange="handleBulkImages(event)">
+        </label>
+      </div>
+ <div style="margin-top: 10px; background: #e8f5e9; padding: 12px; border-radius: 6px; border: 1px dashed #28a745;">
+        <b>📊 Excel Készlet Visszaállítás (.xlsx)</b>
+        <p style="font-size: 12px; color: #555; margin: 4px 0 8px 0;">Betölti a RadnóTinta készletnyilvántartó táblát (Cikkszám, Vonalkód, Név, Árak, Készlet oszlopokkal).</p>
+        <label style="background-color: #28a745; color: white; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: bold; display: inline-block; font-size: 14px;">
+          📁 Excel fájl kiválasztása
+          <input type="file" id="excel-import-input" accept=".xlsx,.xls" style="display: none;" onchange="handleExcelImport(event)">
+        </label>
+        <div id="excel-status" style="font-size:13px; color:#555; margin-top:5px;"></div>
+      </div>
+      <table>
+        <thead><tr><th>Fotó</th><th>Cikkszám</th><th>Vonalkód</th><th>Név</th><th>Árak (Eredeti / Kedv.)</th><th>Készlet</th><th>Művelet</th></tr></thead>
+        <tbody id="inv-table"></tbody>
+      </table>
+      <button class="btn-red" style="width:100%;margin-top:15px;padding:10px;" onclick="clearAll()">🗑️ ÖSSZES TERMÉK TÖRLÉSE</button>
+    </div>
+  </div>
+
+  <!-- BEVÉTELEZÉS / ÚJ ÁRU TAB -->
+  <div id="p-add" style="display:none">
+    <div class="card" style="background: #e8f5e9; border: 2px solid #28a745; text-align: center;">
+      <label><b>🟢 Új Áru / Bevételezés Szkenner Státusz:</b> Olvasás aktív</label>
+      <input type="text" id="add-focus-trap" placeholder="Csippants ide vonalkódot a szerkesztéshez/felvételhez..." onkeydown="handleAddContinuousScan(event)" style="background:#fff; border: 2px solid #28a745; text-align:center; font-weight:bold;">
+    </div>
+
+    <div class="card" style="background: #fff8e1; border: 2px solid #ffb300; text-align: center;">
+      <b style="color: #ff8f00; font-size: 15px; display: block; margin-bottom: 5px;">📷 Vonalkód beolvasás / Átugrás az Előzményekből</b>
+      <p style="font-size: 12px; color: #555; margin: 0 0 8px 0;">Csippantsd be a vonalkódot a vonalkód-olvasóddal, vagy kattints rá az Előzményekben!</p>
+      <input type="text" id="history-barcode-scanner" placeholder="Csippants ide az előzménybeli vonalkódot..." onkeydown="handleHistoryBarcodeScan(event)" style="background:#fff; border: 2px solid #ffb300; text-align:center; font-weight:bold;">
+    </div>
+
+    <div class="card" style="background: #fff3cd; border: 2px solid #ffc107;">
+      <b style="color: #856404; font-size: 16px;">📄 Automatikus Szállítólevél / E-számla Bevételezés</b>
+      <label style="background:#e64a19; color:#fff; padding:12px; border-radius:4px; cursor:pointer; font-weight:bold; display:block; text-align:center; margin-top:8px;">
+  📎 PDF Szállítólevél feltöltése (Corwell / Vectraline)
+  <input type="file" id="invoice-pdf-input" accept="application/pdf" style="display:none;" onchange="handleInvoicePDF(event)">
+</label>
+<div id="pdf-status" style="font-size:13px; color:#555; margin-top:5px; text-align:center;"></div>
+      <textarea id="invoice-import-text" rows="5" placeholder="Másold ide a szállítólevél vagy számla szövegét..." style="background:#fff;"></textarea>
+      <button onclick="processInvoiceText()" style="background:#ffc107; color:#212529; font-weight:bold; border:none; padding:10px; margin-top:8px; cursor:pointer; border-radius:4px;">🚀 SZÁLLÍTÓLEVÉL AUTOMATIKUS BEVÉTELEZÉSE</button>
+    </div>
+
+    <div class="card">
+      <b>➕ Új termék / Szerkesztés:</b>
+      <input type="text" id="m-sku" placeholder="Cikkszám" oninput="checkManualInput()">
+      <input type="text" id="m-code" placeholder="Vonalkód / EAN" oninput="checkManualInput()">
+      <input type="text" id="m-name" placeholder="Termék neve">
+      <input type="number" id="m-price" placeholder="Eredeti Ár (Ft)">
+      <input type="number" id="m-discount-price" placeholder="Kedvezményes Ár (Ft) — opcionális">
+      <input type="number" id="m-stock" placeholder="Mennyiség (db)" value="1">
+      
+      <label style="display:block; margin-top:8px; font-size:14px; font-weight:bold; color:#333;">📸 Termék fotója:</label>
+      <input type="file" id="m-image" accept="image/*" style="background:#fff;">
+
+      <button class="btn-green" onclick="saveManual()">💾 MENTÉS / HOZZÁADÁS</button>
+      <button type="button" onclick="clearManualFields()" style="background:#6c757d; color:#fff; font-weight:bold; border:none; padding:10px; cursor:pointer; border-radius:4px; margin-top:8px;">🧹 Mezők kiürítése</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSOMAG TAB -->
+  <div id="p-csomag" style="display:none">
+    <div class="card" style="background: #fff3e0; border: 2px solid #ef6c00;">
+      <h3 style="margin-top:0; color:#e65100;">🎁 Új Csomag Létrehozása / Szerkesztése</h3>
+      <input type="text" id="csomag-nev" placeholder="Csomag neve (pl. Karácsonyi Ajánlat)">
+      <input type="number" id="csomag-ar" placeholder="Csomag ára (Ft)">
+      <div style="margin-top:8px;">
+        <input type="text" id="csomag-scan" placeholder="Csippants ide terméket a csomagba..." onkeydown="handleCsomagScan(event)" style="background:#fff; border:2px solid #ef6c00; text-align:center; font-weight:bold;">
+      </div>
+      <table>
+        <thead><tr><th>Termék</th><th>Cikkszám</th><th>Db a csomagban</th><th>X</th></tr></thead>
+        <tbody id="csomag-szerk-tetelek"></tbody>
+      </table>
+      <button class="btn-green" onclick="saveCsomag()">💾 Csomag Mentése</button>
+      <button onclick="csomagSzerkUrites()" style="background:#6c757d;color:#fff;font-weight:bold;border:none;padding:10px;cursor:pointer;border-radius:4px;margin-top:8px;">🧹 Szerkesztő kiürítése</button>
+    </div>
+    <div class="card" style="background:#f3f9ff; border:2px solid #1976d2;">
+      <h3 style="margin-top:0; color:#0d47a1;">📋 Elmentett Csomagok</h3>
+      <div id="csomag-lista"></div>
+    </div>
+  </div>
+
+<!-- BARCODE MODAL -->
+<div id="bc-modal" class="barcode-modal">
+  <div class="barcode-content" style="width: 550px; max-height: 90vh; overflow-y: auto;">
+    <h3>Vonalkód Címke Nyomtatás (10 db)</h3>
+    
+    <input type="text" id="bc-modal-search" placeholder="🔎 Keresés a termékek között (név, cikkszám, EAN)..." oninput="filterBarcodeModalList()" style="background:#fff; margin-bottom:10px; width:100%; padding:8px;">
+
+    <select id="bc-select" style="width:100%; padding:10px; margin-bottom:10px; font-size:14px;" size="6" onchange="updateBarcodeModalPreview()"></select>
+    
+    <div id="bc-print-container" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 10px; background: #fff; text-align: center;"></div>
+
+    <button class="btn-green" onclick="printBarcodes()" style="background:#007bff; margin-top:10px; width:100%;">Címke Nyomtatása (10 db)</button>
+    <button class="btn-red" onclick="closeBarcodeModal()" style="margin-top:5px; width:100%;">Bezárás</button>
+  </div>
+</div>
+
+<div id="print-area" style="display:none;"></div>
+
+<script>
+const INVOICE_MARKUP = 1.6; // Nettó ár szorzója — ennyiszeresére teszi a kiskeresi árat
+let db = [];
+try {
+  let parsedDb = JSON.parse(localStorage.getItem('bolt_db'));
+  if (Array.isArray(parsedDb)) db = parsedDb;
+} catch(e) { db = []; }
+
+let cart = [];
+try {
+  let parsedCart = JSON.parse(localStorage.getItem('bolt_cart'));
+  if (Array.isArray(parsedCart)) cart = parsedCart;
+} catch(e) { cart = []; }
+
+let friendsOrders = [];
+try {
+  let parsedFriends = JSON.parse(localStorage.getItem('bolt_friends'));
+  if (Array.isArray(parsedFriends)) friendsOrders = parsedFriends;
+} catch(e) { friendsOrders = []; }
+
+let salesHistory = [];
+try {
+  let parsedHist = JSON.parse(localStorage.getItem('bolt_history'));
+  if (Array.isArray(parsedHist)) salesHistory = parsedHist;
+} catch(e) { salesHistory = []; }
+
+let csomagok = [];
+try {
+  let parsedCs = JSON.parse(localStorage.getItem('bolt_csomagok'));
+  if (Array.isArray(parsedCs)) csomagok = parsedCs;
+} catch(e) { csomagok = []; }
+
+var activeFriendScanIndex = null;
+var currentTab = 'pos';
+
+var aktivTranzakcio = {
+    items: [],
+    vegosszeg: 0,
+    paymentType: 'cash'
+};
+
+// ===== FIREBASE INICIALIZÁLÁS ÉS FELHŐS SZINKRONIZÁCIÓ =====
+const firebaseConfig = {
+  apiKey: "AIzaSyDETHT4i7QgG9rlWvi7A7DK5qMCCSWJ1Dg",
+  authDomain: "radnotinta-bolt1.firebaseapp.com",
+  projectId: "radnotinta-bolt1",
+  storageBucket: "radnotinta-bolt1.firebasestorage.app",
+  messagingSenderId: "213136508648",
+  appId: "1:213136508648:web:e15b8796d0b2e42e046b5d",
+  measurementId: "G-XE1JQVRZPZ"
+};
+
+firebase.initializeApp(firebaseConfig);
+const firestoreDB = firebase.firestore();   // ← ÁTNEVEZVE!
+
+// Valós idejű figyelő
+(async function(){
+  try {
+    const docRef = firestoreDB.collection("bolt").doc("adatok");
+
+    docRef.onSnapshot((docSnap) => {
+      if (docSnap.exists) {
+        const a = docSnap.data();
+        if (a.db) localStorage.setItem('bolt_db', JSON.stringify(a.db));
+        if (a.friendsOrders) localStorage.setItem('bolt_friends', JSON.stringify(a.friendsOrders));
+        if (a.salesHistory) localStorage.setItem('bolt_history', JSON.stringify(a.salesHistory));
+        if (a.kassza) localStorage.setItem('bolt_kassza', JSON.stringify(a.kassza));
+        if (a.cedula) localStorage.setItem('bolt_cedula', JSON.stringify(a.cedula));
+        if (a.csomagok) localStorage.setItem('bolt_csomagok', JSON.stringify(a.csomagok));
+
+        if (typeof frissitesUI === 'function') {
+          frissitesUI();
+        }
+        console.log('Adatok szinkronizálva a felhőből.');
+      } else {
+        console.log("Még nincsenek adatok a felhőben.");
+      }
+    });
+  } catch(err) { 
+    console.error('Felhő kapcsolódási hiba:', err); 
+  }
+})();
+
+function sanitizeData() {
+  if (!Array.isArray(db)) db = [];
+  if (!Array.isArray(cart)) cart = [];
+  if (!Array.isArray(friendsOrders)) friendsOrders = [];
+  if (!Array.isArray(salesHistory)) salesHistory = [];
+  if (!Array.isArray(csomagok)) csomagok = [];
+
+  db.forEach(item => {
+    if (item.price === undefined || item.price === null || isNaN(item.price)) item.price = 0;
+    if (item.discountPrice === undefined || item.discountPrice === null || isNaN(item.discountPrice)) item.discountPrice = 0;
+    if (!item.image) item.image = "";
+  });
+
+  cart.forEach(item => {
+    let found = db.find(d => String(d.code) === String(item.code) || (d.sku && String(d.sku) === String(item.code)) || (item.name && d.name && d.name.trim().toLowerCase() === item.name.replace(/^\[.*?\]\s*/, '').trim().toLowerCase()));
+    item.basePrice = found ? (found.discountPrice > 0 ? found.discountPrice : (found.price || 0)) : (item.basePrice || 0);
+    item.originalBasePrice = found ? (found.price || 0) : (item.originalBasePrice || item.basePrice || 0);
+    if (item.itemDiscount === undefined || item.itemDiscount === null || isNaN(item.itemDiscount)) item.itemDiscount = 0;
+  });
+
+  friendsOrders.forEach(friend => {
+    if (friend && Array.isArray(friend.items)) {
+      friend.items.forEach(item => {
+        let found = db.find(d => String(d.code) === String(item.code) || (d.sku && String(d.sku) === String(item.code)) || (item.name && d.name && d.name.trim().toLowerCase() === item.name.trim().toLowerCase()));
+        item.basePrice = found ? (found.discountPrice > 0 ? found.discountPrice : (found.price || 0)) : (item.basePrice || 0);
+        item.originalBasePrice = found ? (found.price || 0) : (item.originalBasePrice || item.basePrice || 0);
+        if (item.itemDiscount === undefined || item.itemDiscount === null || isNaN(item.itemDiscount)) item.itemDiscount = 0;
+      });
+    }
+  });
+}
+
+// ...és a függvény Ele 第一次 hívása (ez volt korábban is a kódban):
+sanitizeData();
+
+async function saveData() {
+  sanitizeData();
+  
+  // 1. Mentés a helyi tárhelyre
+  localStorage.setItem('bolt_db', JSON.stringify(db));
+  localStorage.setItem('bolt_cart', JSON.stringify(cart));
+  localStorage.setItem('bolt_friends', JSON.stringify(friendsOrders));
+  localStorage.setItem('bolt_history', JSON.stringify(salesHistory));
+  localStorage.setItem('bolt_csomagok', JSON.stringify(csomagok));
+
+  // 2. Mentés a Firebase felhőbe
+  try {
+    await firestoreDB.collection("bolt").doc("adatok").set({
+      db: db,
+      friendsOrders: friendsOrders,
+      salesHistory: salesHistory,
+      kassza: JSON.parse(localStorage.getItem('bolt_kassza') || '{}'),
+      cedula: JSON.parse(localStorage.getItem('bolt_cedula') || '{}'),
+      csomagok: csomagok,
+      mentesIdeje: new Date().toLocaleString()
+    });
+    console.log("Adatok sikeresen felküldve a felhőbe!");
+  } catch (err) {
+    console.error("Hiba a felhőbe mentés során:", err);
+  }
+}
+
+function playBeep() {
+  try {
+    let ctx = new (window.AudioContext || window.webkitAudioContext)();
+    let osc = ctx.createOscillator();
+    let gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 800;
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.1);
+  } catch(e) {}
+}
+
+function show(tab) {
+  currentTab = tab;
+  document.getElementById('p-pos').style.display = tab==='pos'?'block':'none';
+  document.getElementById('p-kassza').style.display = tab==='kassza'?'block':'none';
+  document.getElementById('p-friends').style.display = tab==='friends'?'block':'none';
+  document.getElementById('p-inv').style.display = tab==='inv'?'block':'none';
+  document.getElementById('p-add').style.display = tab==='add'?'block':'none';
+  document.getElementById('p-csomag').style.display = tab==='csomag'?'block':'none';
+
+  document.getElementById('tb-pos').className = 'tab ' + (tab==='pos'?'active':'');
+  document.getElementById('tb-kassza').className = 'tab ' + (tab==='kassza'?'active':'');
+  document.getElementById('tb-friends').className = 'tab ' + (tab==='friends'?'active':'');
+  document.getElementById('tb-inv').className = 'tab ' + (tab==='inv'?'active':'');
+  document.getElementById('tb-add').className = 'tab ' + (tab==='add'?'active':'');
+  document.getElementById('tb-csomag').className = 'tab ' + (tab==='csomag'?'active':'');
+
+  if(tab === 'pos') { focusMainTrap(); renderCart(); }
+  if(tab === 'kassza') renderKassza();
+  if(tab === 'friends') renderFriendsOrders();
+  if(tab === 'inv') { renderInv(); focusInvTrap(); }
+  if(tab === 'add') focusAddTrap();
+  if(tab === 'csomag') renderCsomagLista();
+}
+function focusMainTrap() { setTimeout(() => { let t = document.getElementById('pos-focus-trap'); if(t) t.focus({ preventScroll: true }); }, 100); }
+function focusInvTrap() { setTimeout(() => { let t = document.getElementById('inv-focus-trap'); if(t) t.focus({ preventScroll: true }); }, 100); }
+function focusAddTrap() { setTimeout(() => { let t = document.getElementById('add-focus-trap'); if(t) t.focus({ preventScroll: true }); }, 100); }
+function focusFriendTrap(fIndex) {
+  activeFriendScanIndex = fIndex;
+  setTimeout(() => { let t = document.getElementById('friend-focus-trap-' + fIndex); if(t) t.focus({ preventScroll: true }); }, 50);
+}
+
+function openDay() {
+  let openTime = new Date().toLocaleString('hu-HU');
+  localStorage.setItem('bolt_day_open', openTime);
+  
+  if (!Array.isArray(salesHistory)) salesHistory = [];
+  salesHistory.push({
+    date: openTime,
+    paymentType: 'day_open',
+    items: [],
+    total: 0
+  });
+  saveData();
+
+  alert("A nap sikeresen megnyitva: " + openTime);
+}
+
+function closeDay() {
+  let openTime = localStorage.getItem('bolt_day_open');
+  if (!openTime) {
+    if (!confirm("A nap nem lett hivatalosan megnyitva. Biztosan lezárod?")) return;
+  }
+  
+  let closeTime = new Date().toLocaleString('hu-HU');
+  localStorage.setItem('bolt_day_closed', closeTime);
+
+  if (!Array.isArray(salesHistory)) salesHistory = [];
+  salesHistory.push({
+    date: closeTime,
+    paymentType: 'day_close',
+    items: [],
+    total: 0
+  });
+  saveData();
+
+  alert("A nap sikeresen lezárva: " + closeTime);
+}
+
+function createNewFriendOrder() {
+  let nameInput = document.getElementById('new-friend-name');
+  if (!nameInput) return;
+  let name = nameInput.value.trim();
+  if (!name) return alert("Kérlek, add meg az ismerős nevét!");
+  
+  if (!Array.isArray(friendsOrders)) friendsOrders = [];
+  friendsOrders.push({
+    name: name,
+    date: new Date().toLocaleDateString('hu-HU'),
+    items: []
+  });
+  nameInput.value = '';
+  saveData();
+  renderFriendsOrders();
+}
+
+function renderFriendsOrders() {
+  let container = document.getElementById('friends-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (!Array.isArray(friendsOrders) || friendsOrders.length === 0) {
+    container.innerHTML = '<p style="color:#666; font-style:italic; margin-top:10px;">Nincsenek félretett csomagok.</p>';
+    return;
+  }
+
+  friendsOrders.forEach((friend, fIndex) => {
+    if (!friend) return;
+    let friendTotal = 0;
+    let itemsHtml = '';
+
+    if (Array.isArray(friend.items) && friend.items.length > 0) {
+      friend.items.forEach((item, iIndex) => {
+        let itemTotal = (item.basePrice || 0) * (item.qty || 1);
+        friendTotal += itemTotal;
+        itemsHtml += `
+          <tr>
+            <td>${item.name || ''}</td>
+            <td>${item.basePrice || 0} Ft</td>
+            <td>
+              <button onclick="changeFriendItemQty(${fIndex}, ${iIndex}, -1)" style="padding:2px 5px;">-</button>
+              <span style="margin:0 5px; font-weight:bold;">${item.qty || 1}</span>
+              <button onclick="changeFriendItemQty(${fIndex}, ${iIndex}, 1)" style="padding:2px 5px;">+</button>
+            </td>
+            <td><b>${itemTotal} Ft</b></td>
+            <td><button class="btn-red" onclick="removeFriendItem(${fIndex}, ${iIndex})">X</button></td>
+          </tr>
+        `;
+      });
+    } else {
+      itemsHtml = '<tr><td colspan="5" style="text-align:center; color:#888;">A csomag üres. Csippants be terméket vagy add hozzá alább!</td></tr>';
+    }
+
+    let cardDiv = document.createElement('div');
+    cardDiv.className = 'card printable-friend-order';
+    cardDiv.style.cssText = 'background:#fff; border:1px solid #ab47bc; margin-top:15px; position:relative;';
+    cardDiv.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; background:#f3e5f5; padding:8px 12px; border-radius:4px; margin-bottom:10px;">
+        <h4 style="margin:0; color:#7b1fa2;">📦 ${friend.name || 'Ismeretlen'} csomagja <span style="font-size:12px; color:#555; font-weight:normal;">(Rögzítve: ${friend.date || 'Ismeretlen'})</span></h4>
+        <div style="display:flex; gap:6px;">
+          <button onclick="printFriendOrder(${fIndex})" style="background:#0275d8; color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:12px;">🖨️ Nyomtatás</button>
+          <button onclick="transferFriendToCart(${fIndex})" style="background:#28a745; color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:12px;">🛒 Átrakás Kosárba</button>
+          <button onclick="deleteFriendOrder(${fIndex})" style="background:#dc3545; color:#fff; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:12px;">🗑️ Törlés</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:10px;">
+        <input type="text" id="friend-focus-trap-${fIndex}" placeholder="Csippants ide terméket ehhez a csomaghoz..." onkeydown="handleFriendScan(event, ${fIndex})" style="background:#fafafa; border: 2px solid #ab47bc; text-align:center; font-weight:bold;">
+      </div>
+
+      <table>
+        <thead><tr><th>Termék Neve</th><th>Egységár</th><th>Db</th><th>Összesen</th><th>X</th></tr></thead>
+        <tbody>${itemsHtml}</tbody>
+      </table>
+      <div style="text-align:right; font-weight:bold; font-size:16px; margin-top:8px; color:#7b1fa2;">Csomag értéke: ${friendTotal} Ft</div>
+    `;
+    container.appendChild(cardDiv);
+  });
+}
+
+function handleFriendScan(e, fIndex) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    let inputEl = document.getElementById('friend-focus-trap-' + fIndex);
+    if (!inputEl) return;
+    let code = inputEl.value.trim();
+    if (!code) return;
+
+    let item = db.find(x => String(x.code).trim() === code || (x.sku && String(x.sku).trim() === code));
+    if (item) {
+      playBeep();
+      let itemBasePrice = (item.discountPrice > 0) ? item.discountPrice : (item.price || 0);
+      if (!friendsOrders[fIndex].items) friendsOrders[fIndex].items = [];
+      let existingItem = friendsOrders[fIndex].items.find(i => String(i.code) === String(item.code));
+      if (existingItem) {
+        existingItem.qty = (existingItem.qty || 1) + 1;
+      } else {
+        friendsOrders[fIndex].items.push({
+          code: item.code,
+          sku: item.sku || '-',
+          name: item.name,
+          basePrice: itemBasePrice,
+          qty: 1
+        });
+      }
+      saveData();
+      renderFriendsOrders();
+      focusFriendTrap(fIndex);
+    } else {
+      alert("Nincs ilyen termék a készletben: " + code);
+    }
+    inputEl.value = '';
+  }
+}
+
+function changeFriendItemQty(fIndex, iIndex, delta) {
+  if (!friendsOrders[fIndex] || !friendsOrders[fIndex].items) return;
+  let item = friendsOrders[fIndex].items[iIndex];
+  if (!item) return;
+  item.qty = (item.qty || 1) + delta;
+  if (item.qty <= 0) {
+    friendsOrders[fIndex].items.splice(iIndex, 1);
+  }
+  saveData();
+  renderFriendsOrders();
+}
+
+function removeFriendItem(fIndex, iIndex) {
+  if (friendsOrders[fIndex] && friendsOrders[fIndex].items) {
+    friendsOrders[fIndex].items.splice(iIndex, 1);
+    saveData();
+    renderFriendsOrders();
+  }
+}
+
+function deleteFriendOrder(fIndex) {
+  if (confirm(`Biztosan törlöd ${friendsOrders[fIndex].name} félretett csomagját?`)) {
+    friendsOrders.splice(fIndex, 1);
+    saveData();
+    renderFriendsOrders();
+  }
+}
+
+function transferFriendToCart(fIndex) {
+  let friend = friendsOrders[fIndex];
+  if (!friend || !friend.items || friend.items.length === 0) return alert("A csomag üres!");
+  
+  friend.items.forEach(fItem => {
+    let found = db.find(d => String(d.code) === String(fItem.code) || (d.sku && String(d.sku) === String(fItem.code)));
+    let effectiveBase = found ? (found.discountPrice > 0 ? found.discountPrice : (found.price || 0)) : (fItem.basePrice || 0);
+    let origBase = found ? (found.price || 0) : (fItem.basePrice || 0);
+
+    let inCart = cart.find(c => String(c.code) === String(fItem.code));
+    if (inCart) {
+      inCart.qty += (fItem.qty || 1);
+    } else {
+      cart.push({
+        code: fItem.code,
+        sku: fItem.sku || '-',
+        name: fItem.name,
+        basePrice: effectiveBase,
+        originalBasePrice: origBase,
+        itemDiscount: 0,
+        qty: fItem.qty || 1
+      });
+    }
+  });
+
+  friendsOrders.splice(fIndex, 1);
+  saveData();
+  renderFriendsOrders();
+  show('pos');
+  alert("A csomag tételei átkerültek a fő pénztár kosarába!");
+}
+
+function printFriendOrder(fIndex) {
+  let friend = friendsOrders[fIndex];
+  if (!friend) return;
+  let printWindow = window.open('', '_blank');
+  let total = 0;
+  let rows = (friend.items || []).map(it => {
+    let sum = (it.basePrice || 0) * (it.qty || 1);
+    total += sum;
+    return `<tr><td>${it.name || ''}</td><td>${it.basePrice || 0} Ft</td><td>${it.qty || 1} db</td><td><b>${sum} Ft</b></td></tr>`;
+  }).join('');
+
+  printWindow.document.write(`
+    <html><head><title>${friend.name || ''} csomagja</title><style>body{font-family:Arial,sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;margin-top:15px;}th,td{border:1px solid #ccc;padding:8px;text-align:left;}</style></head>
+    <body>
+      <h2>📦 ${friend.name || ''} félretett csomagja</h2>
+      <p><b>Dátum:</b> ${friend.date || '-'}</p>
+      <table><thead><tr><th>Termék</th><th>Egységár</th><th>Mennyiség</th><th>Összesen</th></tr></thead><tbody>${rows}</tbody></table>
+      <h3 style="text-align:right; margin-top:15px;">Végösszeg: ${total} Ft</h3>
+    </body></html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 500);
+}
+
+function findProductInDatabase(itemInfo) {
+    let foundProduct = null;
+    if (itemInfo.productCode && itemInfo.productCode !== '-') {
+        foundProduct = db.find(p => p.sku && String(p.sku).trim().toLowerCase() === String(itemInfo.productCode).trim().toLowerCase());
+    }
+    if (!foundProduct && itemInfo.ean) {
+        foundProduct = db.find(p => String(p.code).trim() === String(itemInfo.ean).trim());
+    }
+    if (!foundProduct && itemInfo.name) {
+        const searchName = itemInfo.name.toLowerCase().trim();
+        if (searchName.length > 2) {
+            foundProduct = db.find(p => p.name.toLowerCase().includes(searchName) || searchName.includes(p.name.toLowerCase()));
+        }
+    }
+    return foundProduct;
+}
+
+async function handleInvoicePDF(event) {
+  let file = event.target.files[0];
+  if (!file) return;
+  let statusEl = document.getElementById('pdf-status');
+  statusEl.innerText = '⏳ PDF olvasása...';
+  try {
+    let arrayBuffer = await file.arrayBuffer();
+    let pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = '';
+    for (let p = 1; p <= pdf.numPages; p++) {
+      let page = await pdf.getPage(p);
+      let content = await page.getTextContent();
+      let rows = {};
+      content.items.forEach(it => {
+        let y = Math.round(it.transform[5]);
+        if (!rows[y]) rows[y] = [];
+        rows[y].push({ x: it.transform[4], t: it.str });
+      });
+      Object.keys(rows).sort((a,b) => b-a).forEach(y => {
+        fullText += rows[y].sort((a,b) => a.x-b.x).map(i => i.t).join(' ').trim() + '\n';
+      });
+      fullText += '\n';
+    }
+    document.getElementById('invoice-import-text').value = fullText;
+    statusEl.innerText = '✅ PDF beolvasva (' + pdf.numPages + ' oldal). Ellenőrizd, majd nyomd meg a bevételezés gombot!';
+  } catch(err) {
+    statusEl.innerText = '❌ Hiba a PDF olvasásakor: ' + err.message;
+  }
+  event.target.value = '';
+}
+
+function processInvoiceText() {
+  let textareaEl = document.getElementById('invoice-import-text');
+  if (!textareaEl) return;
+  let rawText = textareaEl.value.trim();
+  if (!rawText) return alert("Kérlek, töltsd fel a PDF-et vagy másold be a szöveget!");
+
+  let lines = rawText.split('\n').map(function(l){ return l.replace(/\s+/g, ' ').trim(); }).filter(function(l){ return l.length > 0; });
+  let updatedCount = 0, addedCount = 0;
+
+  let isVectraline = lines.some(function(l){ return /^EAN:\s*\d+$/.test(l); });
+
+  const junkRe = /^(Eladó|Vevő|Szállító|Száll|Oldal|Elektronikus|Fizetési|Számla|Rendelés|Cikkszám|Vonalkód|Összesített|Nettó|Engedménnyel|Áfa|ÁFA|Fizetendő|azaz|A számla|Készült|Adószám|Adóigazgatási|Bank|Tel|Fax|Email|Web|Késedelmes|Kocsi|Szedő|Revizor|Megrend|Import|A csomagolás|A kiterjesztett|A jelenlegi|A 2026|Eddigi|Köszönjük|Aktuális|Megjegyzés|Számlázó|Az áru|Ügyintéző|Cégjegyzékszám|Telefon|Bankszámla|szállítási)/i;
+
+  let addProduct = function(sku, ean, name, qty, netto) {
+    if (!name || /előleg|logisztikai/i.test(name)) return;
+    if (netto <= 0) return;
+    let kiskerar = Math.round(netto * INVOICE_MARKUP);
+    let existing = db.find(function(p){
+      return (ean && String(p.code).trim() === ean) || (sku && p.sku && String(p.sku).trim() === sku);
+    });
+    if (existing) {
+      if (ean) existing.code = ean;
+      if (sku) existing.sku = sku;
+      existing.stock = (parseInt(existing.stock, 10) || 0) + qty;
+      existing.price = kiskerar;
+      updatedCount++;
+    } else {
+      db.push({ sku: sku || '-', code: ean || '', name: name, price: kiskerar, discountPrice: 0, stock: qty, image: "" });
+      addedCount++;
+    }
+  };
+
+  if (isVectraline) {
+    const itemRe = /^((?:\d{2}\.\d{3,8})|(?:[A-Z]{1,2}\d[\dA-Z]*(?:[\/\-][\dA-ZÁÉÚŐÓÜÖÍ]+)*))\s+(.+?)\s+(\d+)\s+(darab|csomag|készlet|tömb|doboz|db|pár|szett|bliszter|tekercs)\b\s*(.*)$/;
+    const eanRe2 = /EAN:\s*(\d{8,14})/;
+    const decRe = /(-?\d[\d\s]*,\d{2})/g;
+
+    // 1) Tétel-kezdő sorok felkutatása
+    let items = [];
+    lines.forEach(function(l, idx){
+      if (/^(Cikkszám|VT SZ|Megrend|Fiz e té si)/.test(l)) return;
+      let m = l.match(itemRe);
+      if (!m) return;
+      let name = m[2].replace(/\s+,/g, ',').trim();
+      if (/csomagolási|utánvét|kedvezmény|forgalom/i.test(name)) return;
+      items.push({ idx: idx, sku: m[1], name: name, qty: parseInt(m[3], 10), rest: m[5] || '', ean: null, netto: 0 });
+    });
+
+    // 2) EAN és nettó egységár keresése minden tétel blokkjában
+    items.forEach(function(it, n){
+      let blockEnd = (n + 1 < items.length) ? items[n + 1].idx : lines.length;
+      for (let k = it.idx; k < Math.min(blockEnd, it.idx + 8); k++) {
+        let em = lines[k].match(eanRe2);
+        if (em) { it.ean = em[1]; break; }
+      }
+      let amounts = (it.rest.match(decRe) || []).map(function(s){
+        return parseFloat(s.replace(/\s/g, '').replace(',', '.'));
+      });
+      if (amounts.length >= 2) {
+        it.netto = Math.round(amounts[amounts.length - 2] / it.qty);
+      }
+    });
+
+    // 3) Diagnosztika: árva EAN-ok
+    lines.forEach(function(l, idx){
+      let em = l.match(eanRe2);
+      if (!em) return;
+      let tartozik = items.some(function(it, n){
+        let vege = (n + 1 < items.length) ? items[n + 1].idx : lines.length;
+        return idx >= it.idx && idx < vege;
+      });
+      if (!tartozik) console.warn('⚠️ Árva EAN (nincs hozzá tételsor):', em[1]);
+    });
+
+    // 4) Bevételezés
+    items.forEach(function(it){
+      if (!it.ean) {
+        console.warn('⚠️ Tétel EAN nélkül, kihagyva:', it.sku, it.name);
+        return;
+      }
+      if (!it.netto || it.netto <= 0) {
+        console.warn('⚠️ Tétel ár nélkül, kihagyva:', it.sku, it.name);
+        return;
+      }
+      addProduct(it.sku, it.ean, it.name, it.qty, it.netto);
+    });
+
+  } else {
+    // ===== CORWELL (eredeti) =====
+    const skuRe = /^([A-Z]{2,}[A-Z0-9\-]{1,13})(\s+\d{3,10})?$/;
+    const vtszRe = /^(\d{6,8})\s+(-?\d+)\s+(db|készlet|csom|kg|bliszter)\s+(.*)$/;
+    const eanRe = /^(599\d{10}|\d{13,14})$/;
+    const techRe = /^-?\d+[,.]\d+\s+(db|készlet|csom|kg|bliszter)\s+\d+[,.]\d+\s*%/;
+
+    let i = 0;
+    while (i < lines.length) {
+      let m = lines[i].match(skuRe);
+      if (!m) { i++; continue; }
+      let sku = m[1];
+      let ean = null, qty = 0, unit = 'db', netto = 0;
+      let j = i + 1, nameStart = -1;
+      while (j < lines.length && j <= i + 5) {
+        if (!ean && eanRe.test(lines[j])) { ean = lines[j]; j++; continue; }
+        let vm = lines[j].match(vtszRe);
+        if (vm) {
+          qty = Math.abs(parseInt(vm[2], 10));
+          unit = vm[3];
+          let pm = vm[4].match(/^([\d\s]+),(\d+)/);
+          if (pm) netto = Math.round(parseFloat(pm[1].replace(/\s/g, '') + '.' + pm[2]));
+          j++; continue;
+        }
+        if (ean && qty > 0 && !techRe.test(lines[j])) { nameStart = j; break; }
+        j++;
+      }
+      if (ean && qty > 0 && nameStart !== -1) {
+        let nameParts = [];
+        let k = nameStart;
+        while (k < lines.length && nameParts.length < 2) {
+          let nl = lines[k];
+          if (skuRe.test(nl) || junkRe.test(nl) || techRe.test(nl) || /\d+\s+db\b/.test(nl) || /SZJ/i.test(nl)) break;
+          nameParts.push(nl);
+          k++;
+        }
+        let name = nameParts.join(' ').replace(/\s*,\s*$/, '').trim();
+        if (!name || /logisztikai|előleg|display\s*,\s*karton/i.test(name) || netto === 0) { i = k; continue; }
+        addProduct(sku, ean, name, qty, netto);
+        i = k;
+        continue;
+      }
+      i++;
+    }
+  }
+
+  saveData();
+  renderInv();
+  textareaEl.value = '';
+  document.getElementById('pdf-status').innerText = '';
+  alert('Bevételezés kész! Új termékek: ' + addedCount + ' db. Készlet bővítve: ' + updatedCount + ' db. Ár = nettó x ' + INVOICE_MARKUP + '. Ellenőrizd a Készlet fülön!');
+}
+
+function handleExcelImport(event) {
+  let file = event.target.files[0];
+  if (!file) return;
+  let statusEl = document.getElementById('excel-status');
+  statusEl.innerText = '⏳ Excel fájl olvasása...';
+  let reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      let data = new Uint8Array(e.target.result);
+      let workbook = XLSX.read(data, { type: 'array' });
+      let sheet = workbook.Sheets[workbook.SheetNames[0]];
+      let rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+      let added = 0, updated = 0;
+
+      // Fejléc felismerése: keressük az oszlopokat az első 10 sorban
+      let headerRow = -1;
+      let cols = {};
+      for (let r = 0; r < Math.min(10, rows.length); r++) {
+        let row = rows[r].map(c => String(c || '').trim().toLowerCase());
+        if (row.some(c => c.includes('cikkszám') || c.includes('cikkszam')) && row.some(c => c.includes('vonalkód') || c.includes('vonalkod'))) {
+          headerRow = r;
+          row.forEach((c, idx) => {
+            if (c.includes('cikkszám') || c.includes('cikkszam')) cols.sku = idx;
+            else if (c.includes('vonalkód') || c.includes('vonalkod')) cols.code = idx;
+            else if (c.includes('termék') || c.includes('nev')) cols.name = idx;
+            else if (c.includes('eredeti')) cols.price = idx;
+            else if (c.includes('kedvezm')) cols.discount = idx;
+            else if (c.includes('készlet') && !c.includes('cikk')) cols.stock = idx;
+          });
+          break;
+        }
+      }
+      if (headerRow === -1 || cols.sku === undefined) {
+        statusEl.innerText = '❌ Nem találtam fejlécet (Cikkszám + Vonalkód oszlopokat). Ellenőrizd a táblát!';
+        return;
+      }
+
+      for (let r = headerRow + 1; r < rows.length; r++) {
+        let row = rows[r];
+        let sku = String(row[cols.sku] || '').trim();
+        let code = String(cols.code !== undefined ? row[cols.code] : '').trim();
+        let name = String(cols.name !== undefined ? row[cols.name] : '').trim();
+        let price = parseInt(String(row[cols.price] || '0').replace(/[^\d]/g, ''), 10) || 0;
+        let disc = cols.discount !== undefined ? parseInt(String(row[cols.discount] || '0').replace(/[^\d]/g, ''), 10) || 0 : 0;
+        let stock = cols.stock !== undefined ? parseInt(String(row[cols.stock] || '0').replace(/[^\d]/g, ''), 10) || 0 : 0;
+
+        if (!sku && !code && !name) continue; // üres sor
+
+        let existing = db.find(p => (code && String(p.code).trim() === code) ||
+                                    (sku && p.sku && String(p.sku).trim() === sku));
+        if (existing) {
+          if (excelImportMod === null) {
+            let valasz = prompt(
+              "Excel import mód:\n\n" +
+              "Írd be: FELULIRAS → a készlet az Excelben lévő szám lesz (teljes leltár)\n" +
+              "Írd be: HOZZAADAS → a készlethez hozzáadódik az Excel száma (bevételezés)\n\n" +
+              "(Az ár és név adatok mindig frissülnek.)",
+              "FELULIRAS"
+            );
+            excelImportMod = (valasz && valasz.trim().toUpperCase().startsWith('HOZZA')) ? 'hozzaadas' : 'feluliras';
+          }
+          if (excelImportMod === 'hozzaadas') {
+            existing.stock = (parseInt(existing.stock, 10) || 0) + stock;
+          } else {
+            existing.stock = stock;
+          }
+          if (name) existing.name = name;
+          if (price !== null) existing.price = price;
+          if (discPrice !== null) existing.discountPrice = discPrice;
+          if (sku && sku !== '-') existing.sku = sku;
+          updated++;
+        } else {
+
+          db.push({ sku: sku || '-', code: code || '', name: name || 'Névtelen termék',
+                    price: price, discountPrice: disc, stock: stock, image: "" });
+          added++;
+        }
+      }
+
+      saveData();
+      renderInv();
+      statusEl.innerText = '✅ Kész! Új termékek: ' + added + ' db, frissítve: ' + updated + ' db.';
+    } catch(err) {
+      statusEl.innerText = '❌ Hiba: ' + err.message;
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  event.target.value = '';
+}
+
+function handleBulkImages(e) {
+  let files = e.target.files;
+  if (!files || files.length === 0) return;
+  let matchedCount = 0, processedCount = 0;
+
+  Array.from(files).forEach(file => {
+    let fileName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+    fileName = fileName.trim().toLowerCase();
+
+    let reader = new FileReader();
+    reader.onload = function(evt) {
+      let imgData = evt.target.result;
+      let found = db.find(item => 
+        (item.sku && String(item.sku).trim().toLowerCase() === fileName) || 
+        (item.code && String(item.code).trim().toLowerCase() === fileName)
+      );
+      if (found) {
+        found.image = imgData;
+        matchedCount++;
+      }
+      processedCount++;
+      if (processedCount === files.length) {
+        saveData();
+        renderInv();
+        alert(`Tömeges képfeltöltés kész! Sikeresen párosítva: ${matchedCount} db termék.`);
+        e.target.value = '';
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderInv() {
+  var tbody = document.getElementById('inv-table');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  var searchEl = document.getElementById('inv-search');
+  var query = searchEl ? searchEl.value.toLowerCase().trim() : '';
+
+  db.forEach(function(x, i) {
+    if (query && !String(x.name).toLowerCase().includes(query) && !String(x.code).toLowerCase().includes(query) && (!x.sku || !String(x.sku).toLowerCase().includes(query))) return;
+    var isLow = parseInt(x.stock, 10) <= 3;
+    var itemPrice = (x.price !== undefined && x.price !== null && !isNaN(x.price)) ? x.price : 0;
+    var itemDiscPrice = (x.discountPrice !== undefined && x.discountPrice !== null && !isNaN(x.discountPrice)) ? x.discountPrice : 0;
+
+    var priceDisplay;
+    if (itemDiscPrice > 0) {
+      priceDisplay = '<span style="text-decoration:line-through;color:#999;font-size:11px;">' + itemPrice + ' Ft</span><br><b style="color:green;">' + itemDiscPrice + ' Ft (Akciós)</b>';
+    } else {
+      priceDisplay = itemPrice + ' Ft';
+    }
+
+    var imgDisplay;
+    if (x.image) {
+      imgDisplay = '<img src="' + x.image + '" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #ccc;">';
+    } else {
+      imgDisplay = '<span style="color:#aaa;font-size:11px;">Nincs kép</span>';
+    }
+
+    var sorStilus = isLow ? 'background:#f2dede;color:#a94442;font-weight:bold;' : '';
+    var gombok = '<button onclick="cedularaTesz(' + i + ')" title="Polccedulara tesz" style="background:#f0a500;color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;margin-right:4px;">🏷️</button>' +
+      '<button onclick="editItem(' + i + ')" style="background:#0275d8;color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;margin-right:4px;">Módosít</button>' +
+      '<button onclick="deleteItem(' + i + ')" style="background:#d9534f;color:white;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;">Töröl</button>';
+
+    var tr = document.createElement('tr');
+    tr.style.cssText = sorStilus;
+    tr.innerHTML = '<td>' + imgDisplay + '</td>' +
+      '<td>' + (x.sku || '-') + '</td>' +
+      '<td>' + (x.code || '-') + '</td>' +
+      '<td>' + (x.name || '') + '</td>' +
+      '<td>' + priceDisplay + '</td>' +
+      '<td>' + (x.stock || 0) + ' db</td>' +
+      '<td>' + gombok + '</td>';
+    tbody.appendChild(tr);
+  });
+}
+function deleteItem(i) { if (confirm("Törlöd a terméket?")) { db.splice(i, 1); saveData(); renderInv(); } }
+function clearAll() { if (confirm("Törlöd az ÖSSZES terméket?")) { db = []; saveData(); renderInv(); } }
+
+var editIndex = null;
+
+function editItem(i) {
+  let item = db[i];
+  if (!item) return;
+  editIndex = i;
+  document.getElementById('m-sku').value = item.sku || '';
+  document.getElementById('m-code').value = item.code || '';
+  document.getElementById('m-name').value = item.name || '';
+  document.getElementById('m-price').value = (item.price !== undefined && item.price !== null && !isNaN(item.price)) ? item.price : 0;
+  document.getElementById('m-discount-price').value = (item.discountPrice !== undefined && item.discountPrice !== null && item.discountPrice > 0) ? item.discountPrice : '';
+  document.getElementById('m-stock').value = item.stock || 0;
+  document.getElementById('m-image').value = '';
+  show('add');
+}
+
+function checkManualInput() {
+  let skuEl = document.getElementById('m-sku');
+  let codeEl = document.getElementById('m-code');
+  if (!skuEl || !codeEl) return;
+  let sku = skuEl.value.trim().toLowerCase();
+  let code = codeEl.value.trim();
+  let found = db.find(x => (code && String(x.code).trim() === code) || (sku && x.sku && String(x.sku).toLowerCase() === sku));
+  if (found) {
+    skuEl.value = found.sku || '-';
+    codeEl.value = found.code || '';
+    document.getElementById('m-name').value = found.name || '';
+    document.getElementById('m-price').value = (found.price !== undefined && found.price !== null && !isNaN(found.price)) ? found.price : 0;
+    document.getElementById('m-discount-price').value = (found.discountPrice !== undefined && found.discountPrice !== null && found.discountPrice > 0) ? found.discountPrice : '';
+    document.getElementById('m-stock').value = found.stock || 0;
+  }
+}
+
+function clearManualFields() {
+  editIndex = null;
+  ['m-sku','m-code','m-name','m-price','m-discount-price','m-image'].forEach(id => {
+    let el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  let stockEl = document.getElementById('m-stock');
+  if(stockEl) stockEl.value = '1';
+  let codeEl = document.getElementById('m-code');
+  if(codeEl) codeEl.focus();
+}
+
+function saveManual() {
+  let sku = document.getElementById('m-sku').value.trim();
+  let c = document.getElementById('m-code').value.trim();
+  let n = document.getElementById('m-name').value.trim();
+  let p = parseInt(document.getElementById('m-price').value, 10) || 0;
+  let dp = parseInt(document.getElementById('m-discount-price').value, 10) || 0;
+  let s = parseInt(document.getElementById('m-stock').value, 10) || 0;
+  let imageInput = document.getElementById('m-image');
+
+  if (!c && !sku) return alert('Vonalkód vagy cikkszám kötelező!');
+  if (!n) return alert('A név kötelező!');
+
+  let existing = (editIndex !== null && db[editIndex]) ? db[editIndex]
+  : db.find(x => (c && String(x.code).trim() === c) || (sku && x.sku && String(x.sku).trim() === sku));
+
+  function finishSaving(imgData) {
+    if (existing) { 
+      existing.sku = sku || existing.sku; 
+      existing.code = c || existing.code; 
+      existing.stock = s; 
+      existing.name = n; 
+      existing.price = p; 
+      existing.discountPrice = dp;
+      if (imgData) existing.image = imgData;
+    } else { 
+      db.push({ 
+        sku: sku || '-', 
+        code: c || sku || ('M' + Date.now().toString().slice(-6)), 
+        name: n, 
+        price: p, 
+        discountPrice: dp, 
+        stock: s, 
+        image: imgData || "" 
+      }); 
+    }
+    editIndex = null;
+    saveData(); 
+    clearManualFields(); 
+    renderInv(); 
+    alert("Sikeresen elmentve!"); 
+    focusAddTrap();
+  }
+
+  if (imageInput && imageInput.files && imageInput.files[0]) {
+    let reader = new FileReader();
+    reader.onload = function (e) { finishSaving(e.target.result); };
+    reader.readAsDataURL(imageInput.files[0]);
+  } else {
+    finishSaving(existing ? existing.image : "");
+  }
+}
+
+function handlePosContinuousScan(e) {
+    // ===== Szkenner dupla-olvasás védelem =====
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      let trapEl = document.getElementById('pos-focus-trap');
+      let rawVal = trapEl ? trapEl.value.trim() : '';
+      let now = Date.now();
+      if (rawVal && rawVal === window._lastScanCode && (now - window._lastScanTime) < 500) {
+        if (trapEl) trapEl.value = '';
+        return;
+      }
+      window._lastScanCode = rawVal;
+      window._lastScanTime = now;
+    }
+    // ===== Vége a védelemnek =====
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    let inputEl = document.getElementById('pos-focus-trap');
+    if (!inputEl) return;
+    let code = inputEl.value.trim();
+    if (!code) return;
+    
+    let multiplierEl = document.getElementById('pos-multiplier');
+    let mult = multiplierEl ? parseInt(multiplierEl.value, 10) : 1;
+    if (isNaN(mult) || mult < 1) mult = 1;
+
+    let cs = csomagok.find(c => String(c.code).trim() === code || String(c.sku).trim() === code);
+    if (cs) {
+      playBeep();
+      if (!Array.isArray(cart)) cart = [];
+      let inC = cart.find(x => x.isCsomag && String(x.code) === String(cs.code));
+      if (inC) inC.qty += mult;
+      else cart.push({ code: cs.code, sku: cs.sku, name: '🎁 ' + cs.name, basePrice: cs.price || 0, originalBasePrice: cs.price || 0, itemDiscount: 0, qty: mult, isCsomag: true });
+      saveData();
+      renderCart();
+      if (multiplierEl) multiplierEl.value = '1';
+      inputEl.value = '';
+      return;
+    }
+
+    let item = db.find(x => String(x.code).trim() === code || (x.sku && String(x.sku).trim() === code));
+    if (item) {
+      playBeep();
+      let itemBasePrice = (item.discountPrice > 0) ? item.discountPrice : ((item.price !== undefined && item.price !== null && !isNaN(item.price)) ? item.price : 0);
+      let origPrice = (item.price !== undefined && item.price !== null && !isNaN(item.price)) ? item.price : 0;
+      if (!Array.isArray(cart)) cart = [];
+      let inCart = cart.find(x => String(x.code) === String(item.code) && x.basePrice === itemBasePrice);
+      if (inCart) {
+        inCart.qty += mult;
+      } else {
+        cart.push({ code: item.code, sku: item.sku || '-', name: item.name, basePrice: itemBasePrice, originalBasePrice: origPrice, itemDiscount: 0, qty: mult });
+      }
+      saveData();
+      renderCart();
+      if (multiplierEl) multiplierEl.value = '1';
+    } else alert('Nincs ilyen termék: ' + code);
+    inputEl.value = '';
+  }
+}
+
+function handleInvContinuousScan(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    let inputEl = document.getElementById('inv-focus-trap');
+    let searchEl = document.getElementById('inv-search');
+    if (inputEl && searchEl) {
+      searchEl.value = inputEl.value.trim();
+      renderInv();
+      playBeep();
+      inputEl.value = '';
+    }
+  }
+}
+
+function handleAddContinuousScan(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    let inputEl = document.getElementById('add-focus-trap');
+    if (!inputEl) return;
+    let code = inputEl.value.trim();
+    if (!code) return;
+    playBeep();
+    loadProductIntoAddForm(code);
+    inputEl.value = '';
+   }
+}
+
+function loadProductIntoAddForm(codeOrSku) {
+  let item = db.find(x => String(x.code).trim() === codeOrSku || (x.sku && String(x.sku).trim() === codeOrSku));
+  if (item) {
+    document.getElementById('m-sku').value = item.sku || '-';
+    document.getElementById('m-code').value = item.code || '';
+    document.getElementById('m-name').value = item.name || '';
+    document.getElementById('m-price').value = (item.price !== undefined && item.price !== null && !isNaN(item.price)) ? item.price : 0;
+    document.getElementById('m-discount-price').value = (item.discountPrice !== undefined && item.discountPrice !== null && item.discountPrice > 0) ? item.discountPrice : '';
+    document.getElementById('m-stock').value = item.stock || 0;
+    document.getElementById('m-image').value = '';
+  } else {
+    document.getElementById('m-sku').value = '-';
+    document.getElementById('m-code').value = codeOrSku;
+    document.getElementById('m-name').value = '';
+    document.getElementById('m-price').value = '';
+    document.getElementById('m-discount-price').value = '';
+    document.getElementById('m-stock').value = '1';
+    document.getElementById('m-image').value = '';
+  }
+  show('add');
+}
+
+function handleHistoryBarcodeScan(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    let inputEl = document.getElementById('history-barcode-scanner');
+    if (!inputEl) return;
+    let code = inputEl.value.trim();
+    if (!code) return;
+    playBeep();
+    loadProductIntoAddForm(code);
+    inputEl.value = '';
+  }
+}
+
+function updatePosQuickSearch() {
+  let searchInput = document.getElementById('pos-quick-search');
+  if (!searchInput) return;
+  let q = searchInput.value.toLowerCase().trim();
+  let resBox = document.getElementById('pos-search-results'), prevBox = document.getElementById('pos-selected-preview');
+  if (!resBox || !prevBox) return;
+
+  if (!q) { resBox.style.display = 'none'; prevBox.style.display = 'none'; return; }
+  let matches = db.filter(x => x && (x.name.toLowerCase().includes(q) || String(x.code).toLowerCase().includes(q) || (x.sku && String(x.sku).toLowerCase().includes(q))));
+ 
+  resBox.style.display = 'block';
+  resBox.innerHTML = matches.length === 0 ? '<div style="padding:6px;color:#888;">Nincs találat.</div>' : '';
+  matches.forEach(item => {
+    let div = document.createElement('div');
+    div.style.cssText = 'padding:6px 8px;cursor:pointer;border-bottom:1px solid #eee;';
+    let itemPrice = (item.price !== undefined && item.price !== null && !isNaN(item.price)) ? item.price : 0;
+    let itemDiscPrice = (item.discountPrice !== undefined && item.discountPrice !== null && !isNaN(item.discountPrice)) ? item.discountPrice : 0;
+    let priceText = itemDiscPrice > 0 ? `<span style="text-decoration:line-through;color:#999;">${itemPrice} Ft</span> <b style="color:green;">${itemDiscPrice} Ft</b>` : `${itemPrice} Ft`;
+    
+    div.innerHTML = `<b>${item.name || ''}</b> (${item.sku || '-'}) — ${priceText} — <b>Készlet: ${item.stock || 0} db</b>`;
+    
+    div.onclick = () => {
+      searchInput.value = '';
+      resBox.style.display = 'none';
+      prevBox.style.display = 'block';
+      let codeVal = item.code || item.sku || '-';
+      let infoEl = document.getElementById('pos-prev-info');
+      if (infoEl) infoEl.innerHTML = `${item.name || ''} | Cikkszám: ${item.sku || '-'} | Készlet: ${item.stock || 0} db | Ár: ${priceText}`;
+      try {
+        JsBarcode("#pos-prev-svg", codeVal, { format: "CODE128", width: 1.8, height: 45, displayValue: true });
+      } catch(e) {}
+      
+      let multiplierEl = document.getElementById('pos-multiplier');
+      let mult = multiplierEl ? parseInt(multiplierEl.value, 10) : 1;
+      if (isNaN(mult) || mult < 1) mult = 1;
+
+      let itemBasePrice = (item.discountPrice > 0) ? item.discountPrice : ((item.price !== undefined && item.price !== null && !isNaN(item.price)) ? item.price : 0);
+      let origPrice = (item.price !== undefined && item.price !== null && !isNaN(item.price)) ? item.price : 0;
+      if (!Array.isArray(cart)) cart = [];
+      let inCart = cart.find(x => String(x.code) === String(item.code) && x.basePrice === itemBasePrice);
+      if (inCart) {
+        inCart.qty += mult;
+      } else {
+        cart.push({ code: item.code, sku: item.sku || '-', name: item.name, basePrice: itemBasePrice, originalBasePrice: origPrice, itemDiscount: 0, qty: mult });
+      }
+      saveData();
+      renderCart();
+      if (multiplierEl) multiplierEl.value = '1';
+      focusMainTrap();
+    };
+    resBox.appendChild(div);
+  });
+}
+
+function applyCartDiscountDirect() { renderCart(); }
+function handleGlobalDiscountKey(e) { if (e.key === 'Enter') { e.preventDefault(); applyCartDiscountDirect(); e.target.blur(); } }
+function handleItemDiscountKey(e, index) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (cart[index]) cart[index].itemDiscount = parseFloat(e.target.value) || 0;
+    saveData(); renderCart(); e.target.blur();
+  }
+}
+function handleItemDiscountBlur(index, value) { 
+  if (cart[index]) cart[index].itemDiscount = parseFloat(value) || 0; 
+  saveData(); renderCart(); 
+}
+function changeCartQty(index, delta) {
+  if (!cart[index]) return;
+  cart[index].qty += delta;
+  if (cart[index].qty <= 0) cart.splice(index, 1);
+  saveData(); renderCart();
+}
+function handleCartQtyInput(index, value) {
+  if (!cart[index]) return;
+  let val = parseInt(value, 10);
+  if (isNaN(val) || val <= 0) cart.splice(index, 1);
+  else cart[index].qty = val;
+  saveData(); renderCart();
+}
+function handleCartQtyKey(e, index) { if (e.key === 'Enter') { e.preventDefault(); handleCartQtyInput(index, e.target.value); e.target.blur(); } }
+
+function renderCart() {
+  var tbody = document.getElementById('cart-table');
+  if(!tbody) return;
+  var discEl = document.getElementById('pos-discount-value');
+  var globalDisc = discEl ? (parseFloat(discEl.value) || 0) : 0;
+  var total = 0;
+  tbody.innerHTML = '';
+  
+  if (!Array.isArray(cart)) cart = [];
+  let htmlRows = '';
+  
+  cart.forEach(function(x, i) {
+    if (!x) return;
+    let found = x.isCsomag ? null : db.find(d => String(d.code) === String(x.code) || (d.sku && String(d.sku) === String(x.code)) || (x.name && d.name && d.name.trim().toLowerCase() === x.name.replace(/^\[.*?\]\s*/, '').trim().toLowerCase()));
+    
+    let effectiveBase = found ? (found.discountPrice > 0 ? found.discountPrice : (found.price || 0)) : (x.basePrice || 0);
+    let originalBase = found ? (found.price || 0) : (x.originalBasePrice || x.basePrice || 0);
+    let hasProductDiscount = found && found.discountPrice > 0 && found.discountPrice < found.price;
+
+    x.basePrice = effectiveBase;
+    x.originalBasePrice = originalBase;
+    x.code = found ? (found.code || x.code || '-') : (x.code || '-');
+    x.sku = found ? (found.sku || '-') : (x.sku || '-');
+    if (x.itemDiscount === undefined || isNaN(x.itemDiscount) || x.itemDiscount === null) x.itemDiscount = 0;
+
+    let priceAfterItemDisc = x.basePrice * (1 - x.itemDiscount / 100);
+    let finalUnitPrice = Math.round(priceAfterItemDisc * (1 - globalDisc / 100));
+    let itemSum = finalUnitPrice * (x.qty || 1);
+    total += itemSum;
+
+    let priceDisplay = (hasProductDiscount || x.itemDiscount > 0 || globalDisc > 0) 
+      ? `<span style="text-decoration:line-through;color:#999;font-size:11px;">${originalBase} Ft</span><br><b style="color:green;">${finalUnitPrice} Ft</b>` 
+      : `${originalBase} Ft`;
+
+    htmlRows += `<tr>
+      <td>${x.name || ''}</td>
+      <td>${priceDisplay}</td>
+      <td>
+        <div style="display:flex; align-items:center; gap:3px;">
+          <button onclick="changeCartQty(${i}, -1)" style="padding:2px 6px; font-weight:bold; background:#e0e0e0; border:1px solid #ccc; border-radius:3px; cursor:pointer;" title="1 csökkentés">−</button>
+          <input type="number" value="${x.qty || 1}" min="1" onkeydown="handleCartQtyKey(event, ${i})" onblur="handleCartQtyInput(${i}, this.value)" style="width:42px; padding:3px; margin:0; text-align:center; font-size:12px;">
+          <button onclick="changeCartQty(${i}, 1)" style="padding:2px 6px; font-weight:bold; background:#e0e0e0; border:1px solid #ccc; border-radius:3px; cursor:pointer;" title="1 növelés">+</button>
+        </div>
+      </td>
+      <td><input type="number" value="${x.itemDiscount}" min="0" max="100" onkeydown="handleItemDiscountKey(event, ${i})" onblur="handleItemDiscountBlur(${i}, this.value)" style="width:55px;padding:3px;margin:0;font-size:12px;" placeholder="%"></td>
+      <td><b>${finalUnitPrice} Ft</b></td>
+      <td><b>${itemSum} Ft</b></td>
+      <td><button class="btn-red" onclick="removeCart(${i})">X</button></td>
+    </tr>`;
+  });
+
+  tbody.innerHTML += htmlRows;
+
+  let totalEl = document.getElementById('cart-total');
+  if (totalEl) totalEl.innerText = total;
+  calculateChange();
+}
+
+function removeCart(i) { cart.splice(i, 1); saveData(); renderCart(); }
+
+function pay(method) { finalizeCheckout(method); }
+
+function finalizeCheckout(method) {
+  if (!Array.isArray(cart) || cart.length === 0) return alert("A kosár üres!");
+  
+  let discEl = document.getElementById('pos-discount-value');
+  let globalDisc = discEl ? (parseFloat(discEl.value) || 0) : 0;
+  
+  let transactionItems = cart.map(item => {
+    let cleanName = (item.name || '').replace(/^\[.*?\]\s*/, '').trim();
+    let found = item.isCsomag ? null : db.find(d => String(d.code) === String(item.code) || (d.sku && String(d.sku) === String(item.code)) || (d.name && d.name.trim().toLowerCase() === cleanName.toLowerCase()));
+    
+    let origP = found ? (found.price || 0) : (item.originalBasePrice || item.basePrice || 0);
+    let bPrice = found ? (found.discountPrice > 0 ? found.discountPrice : (found.price || 0)) : (item.basePrice || 0);
+    let sCode = found ? (found.code || '-') : (item.code || '-');
+    let sSku = found ? (found.sku || '-') : (item.sku || '-');
+    let itemDisc = item.itemDiscount || 0;
+    let finalP = Math.round((bPrice * (1 - itemDisc / 100)) * (1 - globalDisc / 100));
+
+    return {
+      name: item.name || '',
+      code: sCode,
+      sku: sSku,
+      basePrice: origP,
+      discountUnitPrice: bPrice,
+      itemDiscount: itemDisc,
+      finalUnitPrice: finalP,
+      isCsomag: !!item.isCsomag,
+csomagTetelek: item.isCsomag ? (() => { let c = csomagok.find(cc => String(cc.code) === String(item.code)); return c ? JSON.parse(JSON.stringify(c.items)) : null; })() : null,
+      qty: item.qty || 1,
+      totalPrice: finalP * (item.qty || 1)
+    };
+  });
+
+  let transTotal = transactionItems.reduce((sum, it) => sum + it.totalPrice, 0);
+
+  aktivTranzakcio.items = JSON.parse(JSON.stringify(cart));
+  aktivTranzakcio.vegosszeg = transTotal;
+  aktivTranzakcio.paymentType = method;
+
+  if (!Array.isArray(salesHistory)) salesHistory = [];
+  salesHistory.push({
+    date: new Date().toLocaleString('hu-HU'),
+    paymentType: method,
+    items: transactionItems,
+    total: transTotal
+  });
+
+  cart.forEach(cartItem => {
+      if (cartItem.isCsomag) {
+      let cs = csomagok.find(c => String(c.code) === String(cartItem.code));
+      if (cs && Array.isArray(cs.items)) {
+        cs.items.forEach(k => {
+          let p = db.find(d => String(d.code) === String(k.code) || (d.sku && String(d.sku) === String(k.code)));
+          if (p) p.stock = Math.max(0, (parseInt(p.stock, 10) || 0) - (k.qty || 1) * (cartItem.qty || 1));
+        });
+      }
+      return;
+    }
+    let cleanName = (cartItem.name || '').replace(/^\[.*?\]\s*/, '').trim();
+    let dbItem = db.find(i => String(i.code).trim() === String(cartItem.code) || (i.sku && String(i.sku).trim() === String(cartItem.code)) || (i.name && i.name.trim().toLowerCase() === cleanName.toLowerCase()));
+    if (dbItem) dbItem.stock = Math.max(0, (parseInt(dbItem.stock, 10) || 0) - (cartItem.qty || 1));
+  });
+
+var eladottNevek = [];
+  cart.forEach(function(c){ if (eladottNevek.indexOf(c.name) === -1) eladottNevek.push(c.name); });  
+
+  cart = [];
+  saveData();
+  renderCart();
+  renderInv();
+  alacsonyKeszletFigyelmeztetes(eladottNevek);
+  
+  if (method === 'cash') {
+    let cashGivenEl = document.getElementById('cash-given');
+    kasszaKpFizetes(transTotal, parseFloat(cashGivenEl ? cashGivenEl.value : '') || 0);
+  }
+  let cashGivenEl2 = document.getElementById('cash-given');
+  if (cashGivenEl2) cashGivenEl2.value = '';
+  let changeAmtEl = document.getElementById('change-amount');
+  if (changeAmtEl) changeAmtEl.innerText = '0 Ft';
+  if (discEl) discEl.value = '0';
+
+  alert(method === 'card' ? "Sikeres kártyás fizetés és készletlevonás!" : "Sikeres készpénzes fizetés és készletlevonás!");
+  focusMainTrap();
+}
+
+function sztornoAktivRendeles() {
+    if (!aktivTranzakcio || !Array.isArray(aktivTranzakcio.items) || aktivTranzakcio.items.length === 0) {
+        alert("Nincs aktív vagy nemrég lezárt rendelés a sztornózáshoz!");
+        return;
+    }
+
+    if (!confirm("Biztosan sztornózod a rendelést? A termékek visszakerülnek a készletbe, a tételek visszatöltődnek a kosárba, és egy negatív jóváírás keletkezik a statisztikában.")) {
+        return;
+    }
+
+    // 1. Termékek visszatöltése a készletbe
+    aktivTranzakcio.items.forEach(tetel => {
+        if (tetel.isCsomag && !Array.isArray(tetel.csomagTetelek)) {
+            var csomag = csomagok.find(function(cc) { return String(cc.code) === String(tetel.code); });
+            if (csomag && Array.isArray(csomag.items)) {
+                tetel.csomagTetelek = JSON.parse(JSON.stringify(csomag.items));
+            }
+        }
+        if (tetel.isCsomag && Array.isArray(tetel.csomagTetelek)) {
+            tetel.csomagTetelek.forEach(k => {
+                let p = db.find(d => String(d.code) === String(k.code) || (d.sku && String(d.sku) === String(k.code)));
+                if (p) p.stock = (parseInt(p.stock, 10) || 0) + (k.qty || 1) * (tetel.qty || 1);
+            });
+            return;
+        }
+        let termek = db.find(t => String(t.code) === String(tetel.code) || (t.sku && String(t.sku) === String(tetel.sku)));
+        if (termek) {
+            termek.stock = (parseInt(termek.stock, 10) || 0) + (tetel.qty || 1);
+        }
+    });
+
+    // 2. NEGATÍV TRANZAKCIÓ LÉTREHOZÁSA ÉS ELMENTÉSE
+    const most = new Date();
+    const datumStr = most.getFullYear() + '. ' +  
+                     String(most.getMonth() + 1).padStart(2, '0') + '. ' +  
+                     String(most.getDate()).padStart(2, '0') + '. ' +  
+                     most.toLocaleTimeString('hu-HU');
+
+    const negativTrx = {
+        date: datumStr,
+        paymentType: aktivTranzakcio.paymentType || 'cash',
+        items: JSON.parse(JSON.stringify(aktivTranzakcio.items)),
+        total: -Math.abs(Number(aktivTranzakcio.vegosszeg || 0)), // Garantáltan negatív érték!
+        isSztornoJovairas: true
+    };
+
+    salesHistory.push(negativTrx);
+    localStorage.setItem('bolt_history', JSON.stringify(salesHistory));
+
+    // 3. Kassza forgalom korrekciója készpénz esetén
+    let kasszaData = JSON.parse(localStorage.getItem('bolt_kassza') || '{}');
+    if (aktivTranzakcio.paymentType === 'cash' && kasszaData && kasszaData.forgalom !== undefined) {
+        kasszaData.forgalom = Math.max(0, (kasszaData.forgalom || 0) - Number(aktivTranzakcio.vegosszeg || 0));
+        localStorage.setItem('bolt_kassza', JSON.stringify(kasszaData));
+    }
+
+    // 4. Tételek visszatöltése a kosárba és nullázás
+    cart = JSON.parse(JSON.stringify(aktivTranzakcio.items));
+    aktivTranzakcio = { items: [], vegosszeg: 0, paymentType: 'cash' };
+
+    // Ez most már automatikusan felküldi a frissült készletet, history-t és kasszát a felhőbe is!
+    saveData(); 
+    
+    renderCart();
+    renderInv();
+    if (typeof renderKassza === 'function') renderKassza();
+    
+    alert("Sztornó jóváírva! A negatív tétel elmentve, a készlet és a statisztika frissült.");
+}
+
+function calculateChange() {
+  var totalEl = document.getElementById('cart-total');
+  var cashEl = document.getElementById('cash-given');
+  var changeEl = document.getElementById('change-amount');
+  if (!totalEl || !cashEl || !changeEl) return;
+
+  var total = parseFloat(totalEl.innerText) || 0;
+  var cash = parseFloat(cashEl.value) || 0;
+  changeEl.innerText = cash >= total ? (cash - total) + " Ft" : "Hiányzik: " + (total - cash) + " Ft";
+}
+
+function showHistoryModal() {
+  var box = document.getElementById('history-box');
+  if (!box) return;
+  if (box.style.display === 'block') {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = 'block';
+  
+  if (!Array.isArray(salesHistory) || salesHistory.length === 0) {
+    box.innerHTML = '\u003cp style="color:#666;font-style:italic;margin:0;"\u003eNincsenek rögzített értékesítési előzmények.\u003c/p\u003e';
+    return;
+  }
+
+  var totalCashSum = 0, totalCardSum = 0, cashCount = 0, cardCount = 0, sztornoSum = 0, sztornoCount = 0;
+  
+  salesHistory.forEach(function(trx) {
+    if (!trx) return;
+    if (trx.sztoronozva) {
+      sztornoCount++;
+      sztornoSum += (trx.total || 0);
+      return;
+    }
+    var type = trx.paymentType || 'cash';
+    if (type === 'card') {
+      totalCardSum += (trx.total || 0);
+      cardCount++;
+    } else if (type === 'cash') {
+      totalCashSum += (trx.total || 0);
+      cashCount++;
+    }
+  });
+  var grandTotal = totalCashSum + totalCardSum;
+
+  var html = '\u003cdiv style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;"\u003e' +
+    '\u003cb style="color:#333;font-size:16px;"\u003e📊 Előzmény Kimutatás & Pénztár Összesítő\u003c/b\u003e' +
+    '\u003cbutton onclick="exportHistoryExcel()" style="background:#28a745; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px;"\u003e📥 Kimutatás Exportálása Excelbe (.xls)\u003c/button\u003e' +
+    '\u003c/div\u003e' +
+    '\u003cdiv style="background:#e8f5e9; border:1px solid #c8e6c9; padding:12px; border-radius:6px; margin-bottom:15px; font-size:14px;"\u003e' +
+    '\u003cb\u003e💰 Időszaki Pénztári Összesítő (Sztornókkal korrigálva):\u003c/b\u003e\u003cbr\u003e' +
+    '• Készpénzes fizetések: \u003cb\u003e' + cashCount + ' db\u003c/b\u003e tranzakció — Összesen: \u003cb style="color:#2e7d32;"\u003e' + totalCashSum + ' Ft\u003c/b\u003e\u003cbr\u003e' +
+    '• Kártyás fizetések: \u003cb\u003e' + cardCount + ' db\u003c/b\u003e tranzakció — Összesen: \u003cb style="color:#1565c0;"\u003e' + totalCardSum + ' Ft\u003c/b\u003e\u003cbr\u003e' +
+    '• Sztornózott tranzakciók: \u003cb\u003e' + sztornoCount + ' db\u003c/b\u003e — Összesen levonva: \u003cb style="color:#d9534f;"\u003e-' + sztornoSum + ' Ft\u003c/b\u003e\u003cbr\u003e' +
+    '\u003chr style="border:none; border-top:1px solid #c8e6c9; margin:6px 0;"\u003e' +
+    '• \u003cb\u003eNettó Teljes Bevétel (Kassza egyenleg):\u003c/b\u003e \u003cspan style="color:#d32f2f; font-weight:bold; font-size:16px;"\u003e' + grandTotal + ' Ft\u003c/span\u003e' +
+    '\u003c/div\u003e';
+
+  salesHistory.slice().reverse().forEach(function(trx, revIdx) {
+    var idx = salesHistory.length - 1 - revIdx;
+    if (!trx) return;
+    
+    var isSztorno = !!trx.sztoronozva;
+    var payLabel = isSztorno ? '🔄 SZTORNÓZOTT' : '💵 Készpénzes';
+    var payColor = isSztorno ? '#dc3545' : '#28a745';
+    if (!isSztorno && trx.paymentType === 'card') {
+      payLabel = '💳 Kártyás';
+      payColor = '#0275d8';
+    } else if (trx.paymentType === 'day_open') {
+      payLabel = '☀️ Nap Nyitás';
+      payColor = '#ffc107';
+    } else if (trx.paymentType === 'day_close') {
+      payLabel = '🌙 Nap Zárás';
+      payColor = '#dc3545';
+    }
+
+    var cardBg = isSztorno ? '#fff0f0' : '#fff';
+    var textStyle = isSztorno ? 'text-decoration: line-through; color: #888;' : '';
+
+    html += '\u003cdiv style="background:' + cardBg + ';border:1px solid ' + (isSztorno ? '#f5c6cb' : '#ccc') + ';padding:10px;border-radius:6px;margin-bottom:10px;"\u003e' +
+      '\u003cdiv style="display:flex;justify-content:space-between;background:' + (isSztorno ? '#f8d7da' : '#eee') + ';padding:6px;border-radius:4px;font-weight:bold;margin-bottom:6px;"\u003e' +
+      '\u003cspan\u003e#' + (idx+1) + ' Esemény — ' + (trx.date || 'Ismeretlen idő') + ' (\u003cspan style="color:' + payColor + ';"\u003e' + payLabel + '\u003c/span\u003e)\u003c/span\u003e' +
+      (trx.paymentType === 'day_open' || trx.paymentType === 'day_close' ? '' : '\u003cspan style="color:' + (isSztorno ? '#dc3545' : '#1877f2') + '; ' + textStyle + '"\u003eÖsszesen: ' + (trx.total || 0) + ' Ft\u003c/span\u003e') +
+      '\u003c/div\u003e';
+
+    if (trx.paymentType === 'day_open' || trx.paymentType === 'day_close') {
+      html += '\u003cp style="margin:5px 0; font-style:italic; color:#666;"\u003eHivatalos napkezelési esemény.\u003c/p\u003e';
+    } else if (Array.isArray(trx.items)) {
+      html += '\u003ctable style="' + textStyle + '"\u003e' +
+        '\u003cthead\u003e\u003ctr\u003e\u003cth\u003eCikkszám / Vonalkód\u003c/th\u003e\u003cth\u003eTermék Neve\u003c/th\u003e\u003cth\u003eEgységár\u003c/th\u003e\u003cth\u003eDb\u003c/th\u003e\u003cth\u003eÖsszesen\u003c/th\u003e\u003c/tr\u003e\u003c/thead\u003e' +
+        '\u003ctbody\u003e';
+      
+      trx.items.forEach(function(it) {
+        var codeVal = (it.code && it.code !== '-') ? it.code : (it.sku && it.sku !== '-' ? it.sku : '');
+        html += '\u003ctr style="cursor:pointer;" title="Kattints ide a szerkesztéshez az Új Áru fülön!" onclick="loadProductIntoAddForm(\'' + (it.code || it.sku || '') + '\')"\u003e' +
+          '\u003ctd\u003e' +
+            '\u003cdiv style="font-size:11px;color:#555;margin-bottom:2px;"\u003e\u003cb\u003eCikkszám:\u003c/b\u003e ' + (it.sku || '-') + '\u003c/div\u003e' +
+            (codeVal ? '\u003csvg class="hist-barcode-svg" data-code="' + codeVal + '"\u003e\u003c/svg\u003e' : '\u003cspan\u003e-\u003c/span\u003e') +
+          '\u003c/td\u003e' +
+          '\u003ctd\u003e' + (it.name || 'Ismeretlen termék') + '\u003c/td\u003e' +
+          '\u003ctd\u003e' + (it.finalUnitPrice || 0) + ' Ft\u003c/td\u003e' +
+          '\u003ctd\u003e' + (it.qty || 1) + ' db\u003c/td\u003e' +
+          '\u003ctd\u003e\u003cb\u003e' + (it.totalPrice || 0) + ' Ft\u003c/b\u003e\u003c/td\u003e' +
+          '\u003c/tr\u003e';
+      });
+      html += '\u003c/tbody\u003e\u003c/table\u003e';
+    }
+
+    html += '\u003c/div\u003e';
+  });
+
+  box.innerHTML = html;
+
+  setTimeout(function() {
+    box.querySelectorAll('.hist-barcode-svg').forEach(function(svgEl) {
+      var codeToRender = svgEl.getAttribute('data-code');
+      if (codeToRender) {
+        try { JsBarcode(svgEl, codeToRender, { format: "CODE128", width: 1.4, height: 30, displayValue: true, fontSize: 11 }); } catch(e) {}
+      }
+    });
+  }, 50);
+}
+
+function clearHistoryData() {
+  if (confirm("Biztosan törlöd az összes értékesítési előzményt?")) {
+    salesHistory = [];
+    localStorage.removeItem('bolt_history');
+    showHistoryModal();
+    alert("Előzmények törölve!");
+  }
+}
+
+function exportHistoryExcel() {
+  if (!Array.isArray(salesHistory) || salesHistory.length === 0) {
+    return alert("Nincs mit exportálni (üres az előzmény)!");
+  }
+
+  let productStats = {};
+  let totalCashSum = 0, totalCardSum = 0, cashCount = 0, cardCount = 0;
+
+  salesHistory.forEach(trx => {
+    if (!trx) return;
+    if (trx.sztoronozva) return;
+    let pType = trx.paymentType || 'cash';
+    if (pType === 'card') {
+      totalCardSum += (trx.total || 0);
+      cardCount++;
+    } else if (pType === 'cash') {
+      totalCashSum += (trx.total || 0);
+      cashCount++;
+    }
+
+    if (Array.isArray(trx.items)) {
+      trx.items.forEach(it => {
+        let key = (it.sku && it.sku !== '-' ? it.sku : it.code) || it.name;
+        if (!productStats[key]) {
+          productStats[key] = {
+            sku: it.sku || '-',
+            code: it.code || '-',
+            name: it.name || '',
+            totalQty: 0,
+            totalRevenue: 0
+          };
+        }
+        productStats[key].totalQty += (it.qty || 1);
+        productStats[key].totalRevenue += (it.totalPrice || 0);
+      });
+    }
+  });
+
+  let grandTotal = totalCashSum + totalCardSum;
+
+  let html = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <meta charset="utf-8">
+      <!--[if gte mso 9]>
+      <xml>
+       <x:ExcelWorkbook>
+        <x:ExcelWorksheets>
+         <x:ExcelWorksheet>
+          <x:Name>Előzmény Kimutatás</x:Name>
+          <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+         </x:ExcelWorksheet>
+        </x:ExcelWorksheets>
+       </x:ExcelWorkbook>
+      </xml>
+      <![endif]-->
+      <style>
+        body { font-family: 'Segoe UI', Calibri, sans-serif; color: #2C3E50; background-color: #FFFFFF; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 25px; background-color: #FFFFFF; }
+        th { background-color: #2C3E50; color: #FFFFFF; font-weight: bold; border: 1px solid #B2BABB; padding: 10px 12px; font-size: 11pt; text-align: center; }
+        td { border: 1px solid #D5DBDB; padding: 8px 12px; font-size: 10pt; vertical-align: middle; }
+        tr:nth-child(even) { background-color: #F8F9F9; }
+        .num { text-align: right; mso-number-format:"#,##0\\ \"Ft\""; }
+        .center { text-align: center; }
+        .txt { text-align: center; mso-number-format:"\@"; }
+        .section-title { font-size: 14pt; font-weight: bold; color: #2C3E50; margin: 25px 0 10px 0; border-bottom: 2px solid #2C3E50; padding-bottom: 5px; }
+        .summary-box { background: #E8F8F5; border: 1px solid #A3E4D7; padding: 15px; margin-bottom: 20px; font-size: 11pt; border-radius: 6px; }
+      </style>
+    </head>
+    <body>
+      <div style="font-size: 18pt; font-weight: bold; color: #1B4F72; margin-bottom: 5px;">Radnótinta Bolt — Pénztári & Értékesítési Kimutatás</div>
+      <div style="font-size: 10pt; color: #7F8C8D; margin-bottom: 20px;">Generálva: ${new Date().toLocaleString('hu-HU')}</div>
+      
+      <div class="summary-box">
+        <b>IDŐSZAKI PÉNZTÁRI ÖSSZESÍTŐ:</b><br>
+        • Készpénzes tranzakciók száma: <b>${cashCount} db</b> | Összesen: <b style="color: #117A65;">${totalCashSum} Ft</b><br>
+        • Kártyás tranzakciók száma: <b>${cardCount} db</b> | Összesen: <b style="color: #2471A3;">${totalCardSum} Ft</b><br>
+        • <b>TELJES VÉGÖSSZEG (BEVÉTEL):</b> <span style="color: #C0392B; font-size: 12pt;"><b>${grandTotal} Ft</b></span>
+      </div>
+
+      <div class="section-title">1. Termék szerinti eladási összesítő</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Cikkszám</th>
+            <th>Vonalkód</th>
+            <th>Termék Neve</th>
+            <th>Eladott Mennyiség</th>
+            <th>Összes Bevétele</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  Object.values(productStats).forEach(prod => {
+    html += `
+      <tr>
+        <td class="txt">${prod.sku}</td>
+        <td class="txt">${prod.code}</td>
+        <td>${prod.name}</td>
+        <td class="center"><b>${prod.totalQty} db</b></td>
+        <td class="num"><b>${prod.totalRevenue}</b></td>
+      </tr>
+    `;
+  });
+
+  html += `
+        </tbody>
+      </table>
+
+      <div class="section-title">2. Részletes Tranzakció Előzmények</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Tranzakció / Dátum</th>
+            <th>Fizetési Mód</th>
+            <th>Termék Neve</th>
+            <th>Cikkszám</th>
+            <th>Egységár</th>
+            <th>Mennyiség</th>
+            <th>Sor Végösszege</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  salesHistory.forEach((trx, idx) => {
+    if (!trx) return;
+    let payName = 'Készpénzes';
+    if (trx.paymentType === 'card') payName = 'Kártyás';
+    else if (trx.paymentType === 'day_open') payName = 'Nap Nyitás';
+    else if (trx.paymentType === 'day_close') payName = 'Nap Zárás';
+
+    if (trx.paymentType === 'day_open' || trx.paymentType === 'day_close') {
+      html += `
+        <tr>
+          <td>Esemény #${idx+1} (${trx.date || ''})</td>
+          <td class="center"><b>${payName}</b></td>
+          <td colspan="5" style="text-align:center; font-style:italic; color: #7F8C8D;">Hivatalos napkezelési esemény</td>
+        </tr>
+      `;
+    } else if (Array.isArray(trx.items)) {
+      trx.items.forEach(it => {
+        html += `
+          <tr>
+            <td>Tranzakció #${idx+1} (${trx.date || ''})</td>
+            <td class="center">${payName}</td>
+            <td>${it.name || ''}</td>
+            <td class="txt">${it.sku || '-'}</td>
+            <td class="num">${it.finalUnitPrice || 0}</td>
+            <td class="center">${it.qty || 1} db</td>
+            <td class="num"><b>${it.totalPrice || 0}</b></td>
+          </tr>
+        `;
+      });
+    }
+  });
+
+  html += `
+        </tbody>
+      </table>
+    </body>
+    </html>
+  `;
+
+  let blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  let url = URL.createObjectURL(blob);
+  let dl = document.createElement('a');
+  dl.setAttribute("href", url);
+  dl.setAttribute("download", "radnotinta_penztar_kimutatas.xls");
+  document.body.appendChild(dl);
+  dl.click();
+  dl.remove();
+}
+
+function exportData() {
+  let html = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+      <meta charset="utf-8">
+      <!--[if gte mso 9]>
+      <xml>
+       <x:ExcelWorkbook>
+        <x:ExcelWorksheets>
+         <x:ExcelWorksheet>
+          <x:Name>Készlet</x:Name>
+          <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+         </x:ExcelWorksheet>
+        </x:ExcelWorksheets>
+       </x:ExcelWorkbook>
+      </xml>
+      <![endif]-->
+      <style>
+        body { font-family: 'Segoe UI', Calibri, sans-serif; color: #2C3E50; }
+        table { border-collapse: collapse; width: 100%; background-color: #FFFFFF; }
+        th { background-color: #2C3E50; color: #FFFFFF; font-weight: bold; border: 1px solid #B2BABB; padding: 10px 12px; font-size: 11pt; text-align: center; }
+        td { border: 1px solid #D5DBDB; padding: 8px 12px; font-size: 10pt; vertical-align: middle; }
+        tr:nth-child(even) { background-color: #F8F9F9; }
+        .num { text-align: right; mso-number-format:"#,##0\\ \"Ft\""; }
+        .center { text-align: center; }
+        .txt { text-align: center; mso-number-format:"\@"; }
+        .title { font-size: 16pt; font-weight: bold; color: #1B4F72; margin-bottom: 15px; }
+      </style>
+    </head>
+    <body>
+      <div class="title">Radnótinta Bolt — Aktuális Készletnyilvántartás</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Cikkszám</th>
+            <th>Vonalkód</th>
+            <th>Termék Neve</th>
+            <th>Eredeti Ár</th>
+            <th>Kedvezményes Ár</th>
+            <th>Készlet</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  db.forEach(item => {
+    if (item) {
+      let origPrice = item.price || 0;
+      let discPrice = (item.discountPrice && item.discountPrice > 0) ? item.discountPrice : '-';
+      html += `
+        <tr>
+          <td class="txt">${item.sku || '-'}</td>
+          <td class="txt">${item.code || '-'}</td>
+          <td>${item.name || ''}</td>
+          <td class="num">${origPrice}</td>
+          <td class="${discPrice !== '-' ? 'num' : 'center'}">${discPrice}</td>
+          <td class="center"><b>${item.stock || 0} db</b></td>
+        </tr>`;
+    }
+  });
+
+  html += `</tbody></table></body></html>`;
+
+  let blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  let url = URL.createObjectURL(blob);
+  let dl = document.createElement('a');
+  dl.setAttribute("href", url);
+  dl.setAttribute("download", "radnotinta_keszlet.xls");
+  document.body.appendChild(dl);
+  dl.click();
+  dl.remove();
+}
+
+function importData(e) {
+  let files = e.target.files;
+  if (!files || !files[0]) return;
+  let reader = new FileReader();
+  reader.onload = function(evt) {
+    let excelImportMod = null;
+    try {
+      let parsed = JSON.parse(evt.target.result);
+      if (Array.isArray(parsed)) {
+        localStorage.setItem('bolt_db', JSON.stringify(parsed));
+        db = parsed;
+      } else if (parsed && parsed.db) {
+        localStorage.setItem('bolt_db', JSON.stringify(parsed.db));
+        db = parsed.db;
+        if (parsed.salesHistory) { salesHistory = parsed.salesHistory; localStorage.setItem('bolt_history', JSON.stringify(parsed.salesHistory)); }
+        if (parsed.friendsOrders) { friendsOrders = parsed.friendsOrders; localStorage.setItem('friendsOrders', JSON.stringify(parsed.friendsOrders)); }
+        if (parsed.kassza) { kassza = parsed.kassza; if(typeof kasszaMentes === 'function') kasszaMentes(); }
+        if (parsed.csomagok) { csomagok = parsed.csomagok; localStorage.setItem('bolt_csomagok', JSON.stringify(csomagok)); }
+        if (parsed.napOpen) localStorage.setItem('bolt_day_open', parsed.napOpen);
+        if (parsed.napClosed) localStorage.setItem('bolt_day_closed', parsed.napClosed);
+      } else {
+        return alert("Hibás fájlformátum!");
+      }
+      
+      // Ez elmenti helyben ÉS azonnal felküldi a felhőbe is az újonnan importált adatokat!
+      saveData();
+      
+      renderInv(); renderCart(); 
+      if(typeof renderFriendsOrders === 'function') renderFriendsOrders(); 
+      if(typeof renderKassza === 'function') renderKassza();
+      
+      alert("Teljes visszaállítás kész, és az adatok szinkronizálva lettek a felhővel is!");
+    }
+    catch(err) { 
+      console.error(err);
+      alert("Hiba a fájl olvasásakor!"); 
+    }
+  };
+  reader.readAsText(files[0]);
+}
+
+function openBarcodeModal() {
+  let modal = document.getElementById('bc-modal');
+  let searchInput = document.getElementById('bc-modal-search');
+  if (!modal) return;
+  
+  if (searchInput) searchInput.value = '';
+  populateBarcodeSelect('');
+  
+  modal.style.display = 'flex';
+  updateBarcodeModalPreview();
+}
+
+function closeBarcodeModal() {
+  let modal = document.getElementById('bc-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function updateBarcodeModalPreview() {
+  let select = document.getElementById('bc-select');
+  if (!select) return;
+  let idx = parseInt(select.value, 10);
+  let item = db[idx];
+  if (!item) return;
+
+  let container = document.getElementById('bc-print-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  let p = item.discountPrice > 0 ? item.discountPrice : (item.price || 0);
+  let codeToBar = item.code || item.sku || '-';
+
+  for (let i = 0; i < 10; i++) {
+    let cardDiv = document.createElement('div');
+    cardDiv.style.cssText = 'border: 1px dashed #ccc; padding: 6px; background: #fff; border-radius: 4px; text-align: center;';
+    cardDiv.innerHTML = `
+      <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name || ''}</div>
+      <div style="font-size: 10px; color: #555; margin-bottom: 2px;">EAN: ${codeToBar}</div>
+      <svg id="bc-svg-${i}"></svg>
+      <div style="font-size: 12px; font-weight: bold; margin-top: 2px;">${p} Ft</div>
+    `;
+    container.appendChild(cardDiv);
+
+    try {
+      JsBarcode(`#bc-svg-${i}`, codeToBar, { format: "CODE128", width: 1.5, height: 30, displayValue: true, fontSize: 10 });
+    } catch(e) {}
+  }
+}
+
+function printBarcodes() {
+  let select = document.getElementById('bc-select');
+  if (!select) return;
+  let idx = parseInt(select.value, 10);
+  let item = db[idx];
+  if (!item) return;
+
+  let p = item.discountPrice > 0 ? item.discountPrice : (item.price || 0);
+  let codeToBar = item.code || item.sku || '-';
+  let name = item.name || '';
+
+  let printArea = document.getElementById('print-area');
+  if (!printArea) return;
+
+  let gridItems = '';
+  for (let i = 0; i < 10; i++) {
+    gridItems += `
+      <div style="border: 1px dashed #ccc; padding: 6px; text-align: center; background: #fff; page-break-inside: avoid; margin-bottom: 5px;">
+        <div style="font-size: 11px; font-weight: bold; margin-bottom: 2px;">${name}</div>
+        <div style="font-size: 10px; color: #555; margin-bottom: 2px;">EAN: ${codeToBar}</div>
+        <svg id="modal-svg-${i}"></svg>
+        <div style="font-size: 12px; font-weight: bold; margin-top: 2px;">${p} Ft</div>
+      </div>
+    `;
+  }
+
+  printArea.style.display = 'block';
+  printArea.innerHTML = `
+    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 10px;">
+      ${gridItems}
+    </div>
+  `;
+
+  try {
+    for (let i = 0; i < 10; i++) {
+      JsBarcode("#modal-svg-" + i, codeToBar, {
+        format: "CODE128",
+        width: 1.5,
+        height: 30,
+        displayValue: true,
+        fontSize: 10
+      });
+    }
+  } catch(e) {
+    console.error(e);
+  }
+
+  setTimeout(() => {
+    window.print();
+    printArea.style.display = 'none';
+  }, 300);
+}
+
+function populateBarcodeSelect(filterQuery) {
+  let select = document.getElementById('bc-select');
+  if (!select) return;
+  select.innerHTML = '';
+  
+  let q = filterQuery ? filterQuery.toLowerCase().trim() : '';
+  let firstMatchIdx = -1;
+
+  db.forEach((item, idx) => {
+    if (item) {
+      let name = (item.name || '').toLowerCase();
+      let code = (item.code || '').toLowerCase();
+      let sku = (item.sku || '').toLowerCase();
+
+      if (!q || name.includes(q) || code.includes(q) || sku.includes(q)) {
+        let opt = document.createElement('option');
+        opt.value = idx;
+        opt.text = `${item.name || ''} (${item.sku || '-'} / ${item.code || '-'})`;
+        select.appendChild(opt);
+        if (firstMatchIdx === -1) firstMatchIdx = idx;
+      }
+    }
+  });
+
+  if (firstMatchIdx !== -1) {
+    select.value = firstMatchIdx;
+  }
+  updateBarcodeModalPreview();
+}
+
+function filterBarcodeModalList() {
+  let searchInput = document.getElementById('bc-modal-search');
+  if (!searchInput) return;
+  populateBarcodeSelect(searchInput.value);
+}
+
+// ===== ALACSONY KESZLET FIGYELMEZTETO (csak az eladott termekekhez) =====
+var keszletFigyeltNevek = [];
+
+function alacsonyKeszletFigyelmeztetes(eladottTermekNevek){
+  if (!eladottTermekNevek || eladottTermekNevek.length === 0) return;
+
+  var keves = [];
+  db.forEach(function(t){
+    if (eladottTermekNevek.indexOf(t.name) === -1) return;
+    var st = parseInt(t.stock, 10) || 0;
+    if (st <= 3) {
+      if (st === 0) {
+        keves.push('❌ ' + t.name + ' — ELFOGYOTT!');
+      } else {
+        keves.push('📦 ' + t.name + ' — már csak ' + st + ' db!');
+      }
+    }
+  });
+  if (keves.length === 0) return;
+
+  var doboz = document.createElement('div');
+  doboz.style.cssText = 'position:fixed;top:20px;right:20px;background:#c0392b;color:#fff;' +
+    'padding:14px 20px;border-radius:10px;font-size:15px;max-width:320px;z-index:99999;' +
+    'box-shadow:0 4px 14px rgba(0,0,0,.4);line-height:1.6;max-height:200px;overflow-y:auto;';
+  var html = '<b>🔔 Készletfigyelmeztetés</b><br>';
+  // max 3 sor megjelenítése, ha több, összesítve:
+  var lathato = keves.slice(0, 3);
+  lathato.forEach(function(s){ html += s + '<br>'; });
+  if (keves.length > 3) html += '<i>...és még ' + (keves.length - 3) + ' termék kevés!</i>';
+  html += '<br><b>👉 Rendelj utána!</b>';
+  doboz.innerHTML = html;
+  document.body.appendChild(doboz);
+  setTimeout(function(){ doboz.remove(); }, 5000);
+}
+// ===== ALACSONY KESZLET FIGYELMEZTETO VÉGE =====
+
+// ===== POLCCEDULA NYOMTATO =====
+var cedulaLista = JSON.parse(localStorage.getItem('bolt_cedula') || '[]');
+if (!Array.isArray(cedulaLista)) cedulaLista = [];
+
+function cedulaMentes(){
+  localStorage.setItem('bolt_cedula', JSON.stringify(cedulaLista));
+  if (typeof saveData === 'function') saveData();
+}
+
+function cedularaTesz(idx){
+  var t = db[idx];
+  if (!t) return;
+  var ar = (t.discountPrice && t.discountPrice > 0) ? t.discountPrice : t.price;
+  cedulaLista.push({ nev: t.name, ar: ar });
+  cedulaMentes();
+  frissitCedulaTarca();
+}
+
+function cedulaTarcaTorles(){
+  if (cedulaLista.length === 0) return;
+  if (!confirm('Biztosan törlöd az összes cedulát a tálcáról? (' + cedulaLista.length + ' db)')) return;
+  cedulaLista = [];
+  cedulaMentes();
+  frissitCedulaTarca();
+}
+
+function frissitCedulaTarca(){
+  var el = document.getElementById('cedula-db');
+  if (el) el.textContent = cedulaLista.length;
+}
+
+function mindetCedulara(){
+  if (!db || !db.length) { alert('Nincsenek termékek a készletben!'); return; }
+  var termekek = db.filter(function(t){
+    return (parseInt(t.stock, 10) || 0) > 0;
+  });
+  if (!termekek.length) { alert('Egyik termék sincs készleten!'); return; }
+  if (!confirm(termekek.length + ' termek cedulajanak rarakasa a talcara? (termekenkent 1 db, a tálca tartalma cserélve lesz)')) return;
+
+  cedulaLista = [];
+  termekek.forEach(function(t){
+    var ar = (t.discountPrice && t.discountPrice > 0) ? t.discountPrice : t.price;
+    cedulaLista.push({ nev: t.name, ar: ar });
+  });
+  cedulaMentes();
+  frissitCedulaTarca();
+  cedulaNyomtat();
+}
+
+function cedulaNyomtat(){
+  if (cedulaLista.length === 0) { alert('Előbb tesz terméket a tálcára (🏷️ gomb a Készlet fülön)!'); return; }
+  var w = window.open('', '_blank');
+  var css = '<style>' +
+    '@page { size: A4; margin: 5mm; }' +
+    'html, body { font-family: Arial, sans-serif; margin: 0; padding: 0; }' +
+    '.lap { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 3mm; width: 200mm; height: 287mm; box-sizing: border-box; }' +
+    '.cedula { border: 3px solid #000; border-radius: 6px; padding: 2mm; text-align: center; page-break-inside: avoid; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; align-items: center; width: 100%; height: 100%; }' +
+    '.nev { font-size: 20pt; font-weight: bold; line-height: 1.2; margin-bottom: 4mm; }' +
+    '.ar { font-size: 48pt; font-weight: bold; color: #c00000; }' +
+    '.ft { font-size: 20pt; font-weight: bold; color: #000; }' +
+    '.unoka { text-align: center; margin: 0; padding: 0; font-size: 8pt; color: #555; }' +
+    '@media print { .nincs { display: none; } body { margin: 0; } }' +
+    '</style>';
+
+  var html = '<html><head><title>Polccedulak</title>' + css + '</head><body>';
+  html += '<p class="nincs unoka">Ha kesz, nyomj Ctrl+P-t (vagy kattintson a böngeszo Nyomtas gabora). Egy A/4 lapra 9 cedula kerul.</p>';
+  html += '<div class="lap">';
+  for (var i = 0; i < cedulaLista.length; i++) {
+    html += '<div class="cedula"><div class="nev">' + cedulaLista[i].nev + '</div>' +
+            '<div class="ar">' + cedulaLista[i].ar.toLocaleString('hu-HU') + ' <span class="ft">Ft</span></div></div>';
+  }
+  html += '</div></body></html>';
+
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(function(){ w.print(); }, 400);
+}
+// ===== POLCCEDULA NYOMTATO VÉGE =====
+
+// ===== TELJES HTML-BELULI MENTES =====
+function mentesHTMLBe(){
+  if (!confirm('Letoltod a teljes programot az osszes adattal? (Keszlet, elozmenyek, kassza, csomagok — minden a HTML-be epul)')) return;
+
+  var adat = {
+    db: JSON.parse(localStorage.getItem('bolt_db') || '[]'),
+    salesHistory: (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory : [],
+    friendsOrders: JSON.parse(localStorage.getItem('bolt_friends') || '[]'),
+    kassza: JSON.parse(localStorage.getItem('bolt_kassza') || 'null'),
+    cedula: JSON.parse(localStorage.getItem('bolt_cedula') || '[]'),
+    csomagok: (typeof csomagok !== 'undefined' && Array.isArray(csomagok)) ? csomagok : [],
+    napOpen: localStorage.getItem('bolt_day_open') || null,
+    napClosed: localStorage.getItem('bolt_day_closed') || null,
+    mentesIdeje: new Date().toLocaleString('hu-HU')
+  };
+
+  // A JSON-ban semmi nem lezárhatja a scriptet:
+  var adatSzoveg = JSON.stringify(adat)
+    .replace(/<\//g, '<\\/')
+    .replace(/<!--/g, '<\\!--');
+
+ // A script tag-ek darabokból, hogy a forrásfájlban se legyen értelmezhető lezaro tag a stringben
+  var S_OPEN  = '<scr' + 'ipt id="beagyazott-adat">';
+  var S_CLOSE = '<\/scr' + 'ipt>';
+
+  var eredeti = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+
+  // Korábbi beágyazott blokk eltávolítása (ha már mentett fájlt mentenénk újra)
+  var start = eredeti.indexOf(S_OPEN);
+  if (start !== -1) {
+    var end = eredeti.indexOf(S_CLOSE, start);
+    if (end !== -1) {
+      eredeti = eredeti.slice(0, start) + eredeti.slice(end + S_CLOSE.length);
+    }
+  }
+
+  var betolto = S_OPEN + 'window.BEMASOLVA=' + adatSzoveg + ';' + S_CLOSE;
+  var ujHTML = eredeti.replace('</body>', function(){ return betolto + '</body>'; });
+
+  var blob = new Blob([ujHTML], { type: 'text/html;charset=utf-8' });
+  var url = URL.createObjectURL(blob);
+  var dl = document.createElement('a');
+  dl.href = url;
+  dl.download = 'radnotinta_TELJES_' + new Date().toISOString().slice(0, 10) + '.html';
+  document.body.appendChild(dl); dl.click(); dl.remove();
+  alert('Teljes mentes letoltve! A letoltott HTML fajl tartalmazza az osszes adatot.');
+}
+
+// ===== TELJES EXCEL EXPORT (tobb munkalappal) =====
+function exportTeljesExcel(){
+  if (!confirm('Letoltod a teljes kimutatast Excelbe? (Keszlet + Elozmenyek + Kassza + Csomagok, tobb munkalapon)')) return;
+
+  var w = window.open('', '_blank');
+
+  var stilus = '<style>' +
+    'body { font-family: Arial; }' +
+    'h2 { color: #1e3c72; }' +
+    'table { border-collapse: collapse; margin-bottom: 30px; }' +
+    'th { background: #1e3c72; color: #fff; padding: 6px 10px; border: 1px solid #333; }' +
+    'td { padding: 5px 10px; border: 1px solid #999; }' +
+    '. fej { font-weight: bold; }' +
+    '</style>';
+
+  var html = '<html><head><meta charset="UTF-8"><title>RadnoTinta Teljes Kimutatas</title>' + stilus + '</head><body>';
+  html += '<h1>RadnoTinta Bolt — Teljes kimutatas</h1>';
+  html += '<p>Mentes ideje: <b>' + new Date().toLocaleString('hu-HU') + '</b></p>';
+
+  // --- 1. lap: KESZLET ---
+  html += '<h2>1. KESZLET</h2><table>';
+  html += '<tr><th>Cikkszam (SKU)</th><th>Kod (EAN)</th><th>Termeknev</th><th>Ar (Ft)</th><th>Akcios ar (Ft)</th><th>Keszlet (db)</th></tr>';
+  db.forEach(function(x){
+    html += '<tr><td>' + (x.sku || '-') + '</td><td>' + (x.code || '-') + '</td><td>' + (x.name || '') + '</td><td>' + (x.price || 0) + '</td><td>' + (x.discountPrice > 0 ? x.discountPrice : '-') + '</td><td>' + (x.stock || 0) + '</td></tr>';
+  });
+  html += '</table>';
+
+  // --- 2. lap: ELADASI ELOZMENEK ---
+  html += '<h2>2. ELADASI ELOZMENEK</h2><table>';
+  html += '<tr><th>Datum</th><th>Fizetes modja</th><th>Termekek (nev x darab)</th><th>Vegosszeg (Ft)</th></tr>';
+  (salesHistory || []).forEach(function(s){
+    var termekek = (s.items || []).map(function(it){ return (it.name || '?') + ' x' + (it.qty || 1); }).join('; ');
+    html += '<tr><td>' + (s.date || '-') + '</td><td>' + (s.paymentType || '-') + '</td><td>' + termekek + '</td><td>' + (s.total || 0) + '</td></tr>';
+  });
+  html += '</table>';
+
+  // --- 3. lap: KASSZA (napnyitas/napzaras) ---
+  html += '<h2>3. KASSZA — NAPKEZELES</h2><table>';
+  html += '<tr><th>Esemeyn</th><th>Datum</th><th>Elvart kassza (Ft)</th><th>Leszamolt (Ft)</th><th>Kulonbzet (Ft)</th></tr>';
+  (salesHistory || []).forEach(function(s){
+    if (s.paymentType === 'day_open') {
+      html += '<tr><td>NAP NYITASA</td><td>' + (s.date || '-') + '</td><td>-</td><td>-</td><td>-</td></tr>';
+    }
+    if (s.paymentType === 'day_close' && s.kasszaInfo) {
+      var k = s.kasszaInfo;
+      html += '<tr><td>NAPZARAS</td><td>' + (s.date || '-') + '</td><td>' + (k.elvart || 0) + '</td><td>' + (k.tenyleges || 0) + '</td><td>' + (k.kulonbzet || 0) + '</td></tr>';
+    }
+  });
+  html += '</table>';
+
+  // --- 4. lap: FELRETETT CSOMAGOK ---
+  html += '<h2>4. FELRETETT CSOMAGOK</h2><table>';
+  html += '<tr><th>Vevo (ismeros) neve</th><th>Termeknev</th><th>Kod (EAN)</th><th>Cikkszam (SKU)</th><th>Ar (Ft)</th><th>Darab</th></tr>';
+  var csomagok = (typeof friendsOrders !== 'undefined') ? friendsOrders : [];
+  csomagok.forEach(function(o){
+    var termekek = (o.items || o.products || []);
+    if (termekek.length === 0) {
+      html += '<tr><td>' + (o.name || o.nev || '?') + '</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>';
+    } else {
+      termekek.forEach(function(it){
+        html += '<tr><td>' + (o.name || o.nev || '?') + '</td><td>' + (it.name || '-') + '</td><td>' + (it.code || '-') + '</td><td>' + (it.sku || '-') + '</td><td>' + (it.price || it.basePrice || 0) + '</td><td>' + (it.qty || 1) + '</td></tr>';
+      });
+    }
+  });
+  html += '</table>';
+
+  html += '</body></html>';
+
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(function(){ w.print(); }, 500);
+  alert('Tipp: a megnyilt ablakban a Nyomtas ablakban valld "Mentes PDF-kent"-re, vagy jelold ki a tablazatokat es masold Excelbe.\n\n(A kovetkezo valtozatban egyenes .xls letoltest is adok!)');
+}
+
+// ===== TELJES JSON BIZTONSAGI MENTES =====
+function exportJSON() {
+  var adat = {
+    db: JSON.parse(localStorage.getItem('bolt_db') || '[]'),
+    salesHistory: (typeof salesHistory !== 'undefined' && Array.isArray(salesHistory)) ? salesHistory : [],
+    friendsOrders: JSON.parse(localStorage.getItem('bolt_friends') || '[]'),
+    csomagok: (typeof csomagok !== 'undefined' && Array.isArray(csomagok)) ? csomagok : [],
+    kassza: JSON.parse(localStorage.getItem('bolt_kassza') || 'null'),
+    napOpen: localStorage.getItem('bolt_day_open') || null,
+    napClosed: localStorage.getItem('bolt_day_closed') || null,
+    mentesIdeje: new Date().toLocaleString('hu-HU')
+  };
+  var blob = new Blob([JSON.stringify(adat)], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  var dl = document.createElement('a');
+  dl.href = url;
+  dl.download = 'radnotinta_mentes_' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(dl); dl.click(); dl.remove();
+  alert('Teljes JSON mentes letoltve! (keszlet + elozmenyek + kassza + csomagok)');
+}
+
+// ===== CSOMAG MODUL =====
+var csomagSzerkTetelek = [];
+var csomagSzerkIndex = null; // null = új csomag, szám = szerkesztés
+
+function csomagNextSku() {
+  let maxN = 0;
+  csomagok.forEach(c => { let m = String(c.sku || '').match(/CSOM-(\d+)/); if (m) maxN = Math.max(maxN, parseInt(m[1], 10)); });
+  return 'CSOM-' + String(maxN + 1).padStart(4, '0');
+}
+function csomagNextEan() {
+  let code;
+  do { code = '200' + String(Math.floor(Math.random() * 1e9)).padStart(9, '0'); }
+  while (csomagok.some(c => c.code === code));
+  return code;
+}
+function handleCsomagScan(e) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  let inputEl = document.getElementById('csomag-scan');
+  if (!inputEl) return;
+  let code = inputEl.value.trim();
+  if (!code) return;
+  let item = db.find(x => String(x.code).trim() === code || (x.sku && String(x.sku).trim() === code));
+  if (!item) return alert('Nincs ilyen termék a készletben: ' + code);
+  playBeep();
+  let meglevo = csomagSzerkTetelek.find(t => String(t.code) === String(item.code));
+  if (meglevo) meglevo.qty++;
+  else csomagSzerkTetelek.push({ code: item.code, sku: item.sku || '-', name: item.name, qty: 1 });
+  inputEl.value = '';
+  renderCsomagSzerkeszto();
+}
+function csomagTetelQty(idx, delta) {
+  if (delta === -99) { csomagSzerkTetelek.splice(idx, 1); renderCsomagSzerkeszto(); return; }
+  if (!csomagSzerkTetelek[idx]) return;
+  csomagSzerkTetelek[idx].qty += delta;
+  if (csomagSzerkTetelek[idx].qty <= 0) csomagSzerkTetelek.splice(idx, 1);
+  renderCsomagSzerkeszto();
+}
+function renderCsomagSzerkeszto() {
+  var tb = document.getElementById('csomag-szerk-tetelek');
+  if (!tb) return;
+  if (csomagSzerkTetelek.length === 0) {
+    tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888;">Meg nincs termek a csomagban. Szkennelj be egyet!</td></tr>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < csomagSzerkTetelek.length; i++) {
+    var t = csomagSzerkTetelek[i];
+    html = html + '<tr>';
+    html = html + '<td>' + t.name + '</td>';
+    html = html + '<td>' + t.sku + '</td>';
+    html = html + '<td>';
+    html = html + '<button onclick="csomagTetelQty(' + i + ',-1)" style="padding:2px 6px;">-</button>';
+    html = html + '<b style="margin:0 6px;">' + t.qty + '</b>';
+    html = html + '<button onclick="csomagTetelQty(' + i + ',1)" style="padding:2px 6px;">+</button>';
+    html = html + '</td>';
+    html = html + '<td><button class="btn-red" onclick="csomagTetelQty(' + i + ', -99)">X</button></td>';
+    html = html + '</tr>';
+  }
+  tb.innerHTML = html;
+}
+
+function csomagSzerkUrites() {
+  csomagSzerkTetelek = [];
+  csomagSzerkIndex = null;
+  let n = document.getElementById('csomag-nev'), a = document.getElementById('csomag-ar'), s = document.getElementById('csomag-scan');
+  if (n) n.value = ''; if (a) a.value = ''; if (s) s.value = '';
+  renderCsomagSzerkeszto();
+}
+function saveCsomag() {
+  let nev = document.getElementById('csomag-nev').value.trim();
+  let ar = parseInt(document.getElementById('csomag-ar').value, 10) || 0;
+  if (!nev) return alert('A csomag neve kötelező!');
+  if (ar <= 0) return alert('Adj meg érvényes csomagárat!');
+  if (csomagSzerkTetelek.length === 0) return alert('A csomagnak legalább egy terméket tartalmaznia kell!');
+
+  if (csomagSzerkIndex !== null && csomagok[csomagSzerkIndex]) {
+    let cs = csomagok[csomagSzerkIndex];
+    cs.name = nev; cs.price = ar; cs.items = JSON.parse(JSON.stringify(csomagSzerkTetelek));
+    saveData();
+    csomagSzerkUrites();
+    renderCsomagLista();
+    alert('Csomag frissítve: ' + cs.sku);
+  } else {
+    let uj = { sku: csomagNextSku(), code: csomagNextEan(), name: nev, price: ar, items: JSON.parse(JSON.stringify(csomagSzerkTetelek)) };
+    csomagok.push(uj);
+    saveData();
+    csomagSzerkUrites();
+    renderCsomagLista();
+    alert('Csomag elmentve! Cikkszám: ' + uj.sku + ' / EAN: ' + uj.code);
+  }
+}
+function editCsomag(i) {
+  let cs = csomagok[i];
+  if (!cs) return;
+  csomagSzerkIndex = i;
+  csomagSzerkTetelek = JSON.parse(JSON.stringify(cs.items || []));
+  document.getElementById('csomag-nev').value = cs.name || '';
+  document.getElementById('csomag-ar').value = cs.price || 0;
+  renderCsomagSzerkeszto();
+  alert('Szerkesztésre betöltve. Mentéskor felülíródik: ' + cs.sku);
+}
+function deleteCsomag(i) {
+  if (!confirm('Biztosan törlöd a csomagot: ' + csomagok[i].name + '?')) return;
+  csomagok.splice(i, 1);
+  saveData();
+  renderCsomagLista();
+}
+function printCsomagCimke(i) {
+  let cs = csomagok[i];
+  if (!cs) return;
+  let area = document.getElementById('print-area');
+  if (!area) return;
+  area.style.display = 'block';
+  area.innerHTML = `<div style="text-align:center;padding:20px;">
+    <div style="font-size:22px;font-weight:bold;margin-bottom:6px;">🎁 ${cs.name}</div>
+    <div style="font-size:13px;color:#444;margin-bottom:8px;">${(cs.items || []).map(k => k.name + ' ×' + k.qty).join(' • ')}</div>
+    <svg id="csomag-cimke-svg"></svg>
+    <div style="font-size:26px;font-weight:bold;color:#e65100;margin-top:6px;">${cs.price} Ft</div>
+  </div>`;
+  try { JsBarcode("#csomag-cimke-svg", cs.code, { format: "CODE128", width: 2, height: 60, displayValue: true, fontSize: 14 }); } catch(e) {}
+  setTimeout(() => { window.print(); area.style.display = 'none'; }, 300);
+}
+// ===== CSOMAG MODUL VÉGE =====
+
+// ===== KASSZA MODUL =====
+const KASSZA_CIMLETEK = [20000,10000,5000,2000,1000,500,200,100,50,20,10,5];
+let kassza = JSON.parse(localStorage.getItem('bolt_kassza') || 'null') || { datum:null, nyito:0, kpForgalom:0 };
+
+function kasszaMentes(){ 
+  localStorage.setItem('bolt_kassza', JSON.stringify(kassza)); 
+  if (typeof saveData === 'function') saveData();
+}
+
+function kasszaTablaOsszeg(){
+  let sum = 0;
+  document.querySelectorAll('#cimlet-tbody input').forEach(function(inp){
+    sum += (+inp.dataset.cimlet) * (+inp.value || 0);
+  });
+  return sum;
+}
+
+function initCimletTabla(){
+  let tb = document.getElementById('cimlet-tbody');
+  if (!tb || tb.children.length > 0) return;
+  KASSZA_CIMLETEK.forEach(function(c){
+    let tr = document.createElement('tr');
+    tr.innerHTML = '<td><b>' + c.toLocaleString('hu-HU') + ' Ft</b></td>' +
+      '<td><input type="number" min="0" value="0" data-cimlet="' + c + '" style="width:90px;margin:0;text-align:center;font-size:16px;"></td>' +
+      '<td class="cim-sum" style="font-weight:bold;">0 Ft</td>';
+    tb.appendChild(tr);
+  });
+  tb.addEventListener('input', function(e){
+    let inp = e.target;
+    if (!inp.dataset.cimlet) return;
+    inp.closest('tr').querySelector('.cim-sum').textContent =
+      ((+inp.dataset.cimlet) * (+inp.value || 0)).toLocaleString('hu-HU') + ' Ft';
+    document.getElementById('cimlet-osszeg').textContent = kasszaTablaOsszeg().toLocaleString('hu-HU');
+  });
+}
+
+function renderKassza(){
+    frissitsKasszaForgalmat(); // Újraszámolja a history alapján, mielőtt kiírná!
+    initCimletTabla();
+    document.getElementById('kassza-datum').textContent = kassza.datum || '— nincs nyitva —';
+    document.getElementById('kassza-nyito').textContent = kassza.nyito.toLocaleString('hu-HU') + ' Ft';
+    document.getElementById('kassza-forgalom').textContent = kassza.kpForgalom.toLocaleString('hu-HU') + ' Ft';
+    document.getElementById('kassza-elvart').textContent = (kassza.nyito + kassza.kpForgalom).toLocaleString('hu-HU') + ' Ft';
+}
+
+function kasszaNyitas(){
+  if (kassza.datum) { alert('A nap már nyitva van! (' + kassza.datum + ')'); return; }
+  if (kassza.datum) {
+    if (!confirm('A nap már nyitva van (' + kassza.datum + ')!\n\nBiztosan újranyitod? (A korábbi nyitó adatok felülíródnak, de ÚJ napnyitási esemény NEM rögzítődik.)')) return;
+    kassza = { datum: kassza.datum, nyito: kasszaTablaOsszeg(), kpForgalom: 0 };
+    kasszaMentes(); renderKassza();
+    alert('Kassza újranyitva (új rögzítés nélkül): ' + kassza.nyito.toLocaleString('hu-HU') + ' Ft');
+    return;
+  }
+  kassza = { datum: new Date().toLocaleString('hu-HU'), nyito: kasszaTablaOsszeg(), kpForgalom: 0 };
+  kasszaMentes(); renderKassza();
+  let openTime = kassza.datum;
+  localStorage.setItem('bolt_day_open', openTime);
+  salesHistory.push({ date: openTime, paymentType: 'day_open', items: [], total: 0 });
+  saveData();
+  alert('Nap nyitva! Nyito kassza: ' + kassza.nyito.toLocaleString('hu-HU') + ' Ft');
+}
+
+function kasszaZaras(){
+  if (!confirm('Biztosan lezarod a napot? A rendszer kiszamolja a kassza-egyenleget!')) return;
+  let tenyleges = kasszaTablaOsszeg();
+  let elvart = kassza.nyito + kassza.kpForgalom;
+  let diff = tenyleges - elvart;
+  let szin = diff === 0 ? '#28a745' : (diff > 0 ? '#e67e00' : '#dc3545');
+  let diffText = diff === 0 ? 'PONTOS!' : ((diff > 0 ? '+' : '') + diff.toLocaleString('hu-HU') + ' Ft');
+
+  let d = new Date().toLocaleString('hu-HU');
+  let html = '<div style="border:3px solid ' + szin + ';border-radius:10px;padding:14px;font-size:17px;background:#fff;">';
+  html += '<b>Napzaras — ' + d + '</b><br><br>';
+  html += 'Elvart kassza: <b>' + elvart.toLocaleString('hu-HU') + ' Ft</b><br>';
+  html += 'Leszamolt: <b>' + tenyleges.toLocaleString('hu-HU') + ' Ft</b><br>';
+  html += 'Kulonbzet: <b style="color:' + szin + ';font-size:24px;">' + diffText + '</b></div>';
+  document.getElementById('napzar-eredmeny').innerHTML = html;
+
+  salesHistory.push({
+    date: d, paymentType: 'day_close', items: [],
+    total: 0,
+    kasszaInfo: { elvart: elvart, tenyleges: tenyleges, kulonbzet: diff }
+  });
+  kassza = { datum: null, nyito: 0, kpForgalom: 0 };
+  kasszaMentes();
+  document.querySelectorAll('#cimlet-tbody input').forEach(function(inp){
+    inp.value = 0;
+    inp.closest('tr').querySelector('.cim-sum').textContent = '0 Ft';
+  });
+  document.getElementById('cimlet-osszeg').textContent = '0';
+  localStorage.setItem('bolt_day_closed', d);
+  saveData();
+  renderKassza();
+}
+
+function kasszaKpFizetes(vegosszeg, vevoAdta) {
+    // Ezt átírjuk úgy, hogy ne adogassa hozzá közvetlenül, hanem frissítse a history-ból
+    frissitsKasszaForgalmat();
+    if (currentTab === 'kassza') renderKassza();
+}
+
+function frissitsKasszaForgalmat() {
+    let history = JSON.parse(localStorage.getItem('bolt_history') || '[]');
+    let kpSum = 0;
+    
+    history.forEach(trx => {
+        if (trx && trx.paymentType === 'cash') {
+            kpSum += Number(trx.total || trx.vegosszeg || 0);
+        }
+    });
+    
+    kassza.kpForgalom = kpSum;
+    kasszaMentes();
+}
+// ===== KASSZA MODUL VÉGE =====
+
+// ===== CSOMAG LISTA JAVÍTOTT FELÜLÍRÁS =====
+function renderCsomagLista() {
+  let cont = document.getElementById('csomag-lista');
+  if (!cont) return;
+  if (csomagok.length === 0) { cont.innerHTML = '<i style="color:#666;">Nincs még elmentett csomag.</i>'; return; }
+  cont.innerHTML = csomagok.map((cs, i) => {
+    let osszErt = (cs.items || []).reduce((s, k) => {
+      let p = db.find(d => String(d.code) === String(k.code));
+      return s + (p ? (p.price || 0) * (k.qty || 1) : 0);
+    }, 0);
+    let tartalom = (cs.items || []).map(k => k.name + ' ×' + k.qty).join('<br>');
+    return '<div style="background:#fff;border:1px solid #1976d2;border-radius:6px;padding:10px;margin-bottom:10px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">' +
+      '<b>🎁 ' + cs.name + '</b>' +
+      '<span><b>Cikkszám:</b> ' + cs.sku + ' / <b>EAN:</b> ' + cs.code + ' — <b style="color:#e65100;">' + cs.price + ' Ft</b> (Összetevők bekerülési értéke: ' + osszErt + ' Ft)</span>' +
+      '</div>' +
+      '<div style="font-size:13px;color:#444;margin-top:6px;">' + tartalom + '</div>' +
+      '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">' +
+      '<button onclick="printCsomagCimke(' + i + ')" style="background:#007bff;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;">🏷️ Címke Nyomtatása</button>' +
+      '<button onclick="editCsomag(' + i + ')" style="background:#0275d8;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;">✏️ Szerkesztés</button>' +
+      '<button onclick="deleteCsomag(' + i + ')" style="background:#dc3545;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;font-size:12px;">🗑️ Törlés</button>' +
+      '</div></div>';
+  }).join('');
+}
+// ===== FELÜLÍRÁS VÉGE =====
+
+renderInv(); 
+initCimletTabla();
+renderFriendsOrders(); 
+renderCart(); 
+focusMainTrap();
+</script>
+</body>
+</html>
