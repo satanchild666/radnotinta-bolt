@@ -911,6 +911,8 @@ function processInvoiceText() {
   alert('Bevételezés kész! Új termékek: ' + addedCount + ' db. Készlet bővítve: ' + updatedCount + ' db. Ár = nettó x ' + INVOICE_MARKUP + '. Ellenőrizd a Készlet fülön!');
 }
 
+let excelImportMod = null; // Excel import mód ('feluliras' / 'hozzaadas')
+
 function handleExcelImport(event) {
   let file = event.target.files[0];
   if (!file) return;
@@ -949,6 +951,16 @@ function handleExcelImport(event) {
         return;
       }
 
+      // Mód kiválasztása EGYSZER, az elején
+      let valasz = prompt(
+        "Excel import mód:\n\n" +
+        "Írd be: FELULIRAS → a készlet az Excelben lévő szám lesz (teljes leltár)\n" +
+        "Írd be: HOZZAADAS → a készlethez hozzáadódik az Excel száma (bevételezés)\n\n" +
+        "(Az ár és név adatok mindig frissülnek.)",
+        "FELULIRAS"
+      );
+      let mod = (valasz && valasz.trim().toUpperCase().startsWith('HOZZA')) ? 'hozzaadas' : 'feluliras';
+
       for (let r = headerRow + 1; r < rows.length; r++) {
         let row = rows[r];
         let sku = String(row[cols.sku] || '').trim();
@@ -963,28 +975,17 @@ function handleExcelImport(event) {
         let existing = db.find(p => (code && String(p.code).trim() === code) ||
                                     (sku && p.sku && String(p.sku).trim() === sku));
         if (existing) {
-          if (excelImportMod === null) {
-            let valasz = prompt(
-              "Excel import mód:\n\n" +
-              "Írd be: FELULIRAS → a készlet az Excelben lévő szám lesz (teljes leltár)\n" +
-              "Írd be: HOZZAADAS → a készlethez hozzáadódik az Excel száma (bevételezés)\n\n" +
-              "(Az ár és név adatok mindig frissülnek.)",
-              "FELULIRAS"
-            );
-            excelImportMod = (valasz && valasz.trim().toUpperCase().startsWith('HOZZA')) ? 'hozzaadas' : 'feluliras';
-          }
-          if (excelImportMod === 'hozzaadas') {
+          if (mod === 'hozzaadas') {
             existing.stock = (parseInt(existing.stock, 10) || 0) + stock;
           } else {
             existing.stock = stock;
           }
           if (name) existing.name = name;
-          if (price !== null) existing.price = price;
-          if (discPrice !== null) existing.discountPrice = discPrice;
+          if (price > 0) existing.price = price;
+          if (disc > 0) existing.discountPrice = disc;
           if (sku && sku !== '-') existing.sku = sku;
           updated++;
         } else {
-
           db.push({ sku: sku || '-', code: code || '', name: name || 'Névtelen termék',
                     price: price, discountPrice: disc, stock: stock, image: "" });
           added++;
