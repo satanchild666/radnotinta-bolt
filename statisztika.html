@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RadnóTinta – Statisztika</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Segoe UI',Arial,sans-serif; }
+
+  body {
+    min-height:100vh;
+    background: linear-gradient(135deg, #1a0b2e 0%, #2d1b4e 40%, #44318d 100%);
+    background-attachment: fixed;
+    padding: 32px 20px;
+    color:#e8e4f3;
+  }
+
+  /* dekoratív lebegő körök */
+  body::before, body::after {
+    content:''; position:fixed; border-radius:50%; filter:blur(90px); z-index:0; pointer-events:none;
+  }
+  body::before { width:400px; height:400px; background:rgba(138,79,255,.25); top:-100px; right:-100px; }
+  body::after  { width:350px; height:350px; background:rgba(64,186,213,.15); bottom:-80px; left:-80px; }
+
+  .tarolo { max-width:1100px; margin:0 auto; position:relative; z-index:1; }
+
+  h1 {
+    text-align:center; font-size:26pt; font-weight:800; letter-spacing:-.5px;
+    background: linear-gradient(90deg, #c084fc, #818cf8, #22d3ee);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    margin-bottom:6px;
+  }
+  .felirat { text-align:center; color:rgba(232,228,243,.55); margin-bottom:10px; font-size:10.5pt; }
+  .szinkron {
+    text-align:center; font-size:9.5pt; margin-bottom:30px; color:rgba(232,228,243,.45);
+  }
+  .szinkron.ok { color:#4ade80; }
+
+  /* ==== KÁRTYÁK ==== */
+  .kartyak { display:flex; gap:18px; justify-content:center; flex-wrap:wrap; margin-bottom:30px; }
+  .kartya {
+    flex:1; min-width:220px; max-width:340px;
+    background: rgba(255,255,255,.07);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 20px;
+    padding: 24px 28px;
+    position:relative; overflow:hidden;
+    transition: transform .25s ease, box-shadow .25s ease;
+  }
+  .kartya:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.35); }
+  .kartya::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:4px;
+  }
+  .kartya.kp::before     { background:linear-gradient(90deg,#34d399,#10b981); }
+  .kartya.kartyas::before{ background:linear-gradient(90deg,#60a5fa,#3b82f6); }
+  .kartya.arany-k::before{ background:linear-gradient(90deg,#c084fc,#818cf8); }
+  .kartya .cimke { color:rgba(232,228,243,.55); font-size:9.5pt; text-transform:uppercase; letter-spacing:1.5px; font-weight:600; margin-bottom:8px; }
+  .kartya .ertek { font-size:24pt; font-weight:800; letter-spacing:-.5px; }
+  .kp .ertek     { color:#34d399; }
+  .kartyas .ertek{ color:#60a5fa; }
+  .arany-k .ertek{ color:#c084fc; }
+
+  /* ==== PANELEK ==== */
+  .panel {
+    background: rgba(255,255,255,.06);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 20px;
+    padding: 26px;
+    margin-bottom: 26px;
+  }
+  .panel h2 {
+    font-size:13pt; font-weight:700; margin-bottom:18px; color:#e8e4f3;
+    display:flex; align-items:center; gap:10px;
+  }
+  .panel h2 .ikon {
+    width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    font-size:14pt; background:rgba(138,79,255,.2);
+  }
+
+  /* ==== NÉZETVÁLTÓ ==== */
+  .valto {
+    display:inline-flex; gap:4px; background:rgba(255,255,255,.08);
+    padding:4px; border-radius:12px; margin-bottom:20px;
+  }
+  .valto button {
+    padding:8px 22px; border:none; border-radius:9px; cursor:pointer;
+    background:transparent; color:rgba(232,228,243,.6); font-weight:600; font-size:10pt;
+    transition: all .2s ease;
+  }
+  .valto button:hover { color:#fff; }
+  .valto button.aktiv {
+    background:linear-gradient(135deg,#8b5cf6,#6366f1); color:#fff;
+    box-shadow:0 4px 14px rgba(139,92,246,.4);
+  }
+
+  /* ==== TÁBLÁZAT ==== */
+  table { width:100%; border-collapse:separate; border-spacing:0; }
+  th,td { padding:12px 14px; text-align:right; font-size:10.5pt; }
+  th {
+    color:rgba(232,228,243,.5); font-size:8.5pt; text-transform:uppercase; letter-spacing:1.2px;
+    border-bottom:1px solid rgba(255,255,255,.12); font-weight:600;
+  }
+  th:first-child, td:first-child { text-align:left; }
+  tbody tr { transition:background .15s ease; }
+  tbody tr:nth-child(odd) { background:rgba(255,255,255,.03); }
+  tbody tr:hover { background:rgba(139,92,246,.12); }
+  td { border-bottom:1px solid rgba(255,255,255,.05); color:rgba(232,228,243,.85); }
+  td b { color:#fff; }
+  .ossz-sor td { border-bottom:none; border-top:2px solid rgba(139,92,246,.4); font-weight:700; color:#fff; }
+
+  /* ==== RIPORT SÁV ==== */
+  .mentes {
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px;
+    background: rgba(52,211,153,.08);
+    border: 1px solid rgba(52,211,153,.2);
+    font-size:9.5pt; color:rgba(232,228,243,.7);
+  }
+  .mentes b { color:#34d399; }
+  .btn-riport {
+    padding:10px 24px; border:none; border-radius:11px; cursor:pointer;
+    background:linear-gradient(135deg,#10b981,#059669); color:#fff; font-weight:700; font-size:10pt;
+    box-shadow:0 4px 14px rgba(16,185,129,.35);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+  .btn-riport:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(16,185,129,.5); }
+
+  .info { text-align:center; color:rgba(232,228,243,.4); font-style:italic; padding:24px; }
+</style>
+</head>
+<body>
+<div class="tarolo">
+
+<h1>📊 RadnóTinta Statisztika</h1>
+<div class="felirat">Készpénz vs. kártyás forgalom — élő adatok a felhőből</div>
+<div class="szinkron" id="szinkronAllapot">⏳ Felhőkapcsolat létrehozása...</div>
+
+<div class="kartyak">
+  <div class="kartya kp"><div class="cimke">💵 Készpénz</div><div class="ertek" id="kpOssz">–</div></div>
+  <div class="kartya kartyas"><div class="cimke">💳 Kártyás</div><div class="ertek" id="kartyaOssz">–</div></div>
+  <div class="kartya arany-k"><div class="cimke">⚡ Kártyás arány</div><div class="ertek" id="arany">–</div></div>
+</div>
+
+<div class="panel">
+  <h2><span class="ikon">📈</span> Forgalom — készpénz vs. kártya</h2>
+  <div class="valto">
+    <button id="btnNapi" class="aktiv" onclick="nezo('napi')">Napi</button>
+    <button id="btnHeti" onclick="nezo('heti')">Heti</button>
+    <button id="btnHavi" onclick="nezo('havi')">Havi</button>
+  </div>
+  <canvas id="grafikon" height="120"></canvas>
+</div>
+
+<div class="panel">
+  <h2><span class="ikon">📋</span> Részletes kimutatás</h2>
+  <table id="tabla"></table>
+</div>
+
+<div class="panel mentes">
+  <span>💾 <b>Automatikus heti mentés:</b> szombaton 12:00 után magától letölti a riportot (ha az oldal nyitva van).</span>
+  <button class="btn-riport" onclick="riportMent()">⬇ Riport letöltése most</button>
+</div>
+
+</div>
+
+<script>
+// ===== FIREBASE =====
+const firebaseConfig = {
+  apiKey: "AIzaSyDETHT4i7QgG9rlWvi7A7DK5qMCCSWJ1Dg",
+  authDomain: "radnotinta-bolt1.firebaseapp.com",
+  projectId: "radnotinta-bolt1",
+  storageBucket: "radnotinta-bolt1.firebasestorage.app",
+  messagingSenderId: "213136508648",
+  appId: "1:213136508648:web:e15b8796d0b2e42e046b5d",
+  measurementId: "G-XE1JQVRZPZ"
+};
+firebase.initializeApp(firebaseConfig);
+const firestoreDB = firebase.firestore();
+
+const HONAPOK = ['január','február','március','április','május','június',
+                 'július','augusztus','szeptember','október','november','december'];
+const RovidHonapok = ['jan.','febr.','márc.','ápr.','máj.','jún.',
+                      'júl.','aug.','szept.','okt.','nov.','dec.'];
+
+function huDatumParse(str){
+  if(!str) return null;
+  let m = str.match(/^(\d{4})\.\s*(\S+)\s*(\d{1,2})/);
+  if(m){
+    let honapIdx = HONAPOK.indexOf(m[2]);
+    if(honapIdx === -1) honapIdx = RovidHonapok.indexOf(m[2]);
+    if(honapIdx === -1) honapIdx = parseInt(m[2],10) - 1;
+    if(honapIdx >= 0 && honapIdx < 12){
+      return new Date(parseInt(m[1],10), honapIdx, parseInt(m[3],10));
+    }
+  }
+  let d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function adatokFeldolgozasa(nyers){
+  let eredmeny = [];
+  if(Array.isArray(nyers)){
+    nyers.forEach(function(trx){
+      if(!trx) return;
+      if(trx.paymentType !== 'cash' && trx.paymentType !== 'card') return;
+      let d = huDatumParse(trx.date);
+      if(!d) return;
+      let kulcs = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      let mezo = (trx.paymentType === 'card') ? 'kartya' : 'kp';
+      let meglevo = eredmeny.find(x => x.datum === kulcs);
+      if(meglevo){ meglevo[mezo] += (trx.total || 0); }
+      else { eredmeny.push({datum: kulcs, kp: 0, kartya: 0, [mezo]: (trx.total || 0)}); }
+    });
+  }
+  eredmeny.sort(function(a,b){ return a.datum < b.datum ? -1 : 1; });
+  return eredmeny;
+}
+
+let adatok = [];
+let mod = 'napi', grafikon = null;
+
+function fmt(n){ return Math.round(n).toLocaleString('hu-HU') + ' Ft'; }
+
+function hetSzam(d){
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const nap = dt.getUTCDay() || 7;
+  dt.setUTCDate(dt.getUTCDate() + 4 - nap);
+  const evKezd = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
+  return Math.ceil((((dt - evKezd) / 86400000) + 1) / 7);
+}
+
+function csoportosit(modos){
+  const csoport = {};
+  adatok.forEach(function(d){
+    const dt = new Date(d.datum);
+    let kulcs, cimke;
+    if(modos === 'napi'){
+      kulcs = d.datum;
+      cimke = (dt.getMonth()+1) + '. ' + dt.getDate() + '.';
+    } else if(modos === 'heti'){
+      const het = hetSzam(dt);
+      kulcs = dt.getFullYear() + '-H' + het;
+      cimke = het + '. hét';
+    } else {
+      kulcs = d.datum.slice(0, 7);
+      cimke = dt.getFullYear() + '. ' + (dt.getMonth() + 1) + '. hó';
+    }
+    if(!csoport[kulcs]) csoport[kulcs] = {cimke: cimke, kp: 0, kartya: 0};
+    csoport[kulcs].kp += d.kp;
+    csoport[kulcs].kartya += d.kartya;
+  });
+  return Object.values(csoport);
+}
+
+function nezo(m){
+  mod = m;
+  document.getElementById('btnNapi').classList.toggle('aktiv', m === 'napi');
+  document.getElementById('btnHeti').classList.toggle('aktiv', m === 'heti');
+  document.getElementById('btnHavi').classList.toggle('aktiv', m === 'havi');
+  rajzol();
+}
+
+function rajzol(){
+  const kpO = adatok.reduce(function(s, d){ return s + d.kp; }, 0);
+  const kaO = adatok.reduce(function(s, d){ return s + d.kartya; }, 0);
+  const osszO = kpO + kaO;
+  document.getElementById('kpOssz').textContent =
+    osszO > 0 ? fmt(kpO) + '  (' + Math.round(kpO/osszO*100) + '%)' : fmt(kpO);
+  document.getElementById('kartyaOssz').textContent =
+    osszO > 0 ? fmt(kaO) + '  (' + Math.round(kaO/osszO*100) + '%)' : fmt(kaO);
+  document.getElementById('arany').textContent =
+    (kpO + kaO > 0) ? Math.round(kaO / (kpO + kaO) * 100) + '%' : '–';
+
+  const tabla = document.getElementById('tabla');
+  if(adatok.length === 0){
+    tabla.innerHTML = '<tr><td class="info">Még nincsenek eladási adatok. Készíts egy fizetést a bolt-appban!</td></tr>';
+    return;
+  }
+
+  const sor = csoportosit(mod);
+  const cimkek = sor.map(function(x){ return x.cimke; });
+  const kpV = sor.map(function(x){ return x.kp; });
+  const kaV = sor.map(function(x){ return x.kartya; });
+
+  if(typeof Chart !== 'undefined'){
+    if(grafikon) grafikon.destroy();
+    // gradiens kitöltések
+    const ctx = document.getElementById('grafikon').getContext('2d');
+    const gradKp = ctx.createLinearGradient(0,0,0,320);
+    gradKp.addColorStop(0,'rgba(52,211,153,.35)'); gradKp.addColorStop(1,'rgba(52,211,153,0)');
+    const gradKa = ctx.createLinearGradient(0,0,0,320);
+    gradKa.addColorStop(0,'rgba(96,165,250,.35)'); gradKa.addColorStop(1,'rgba(96,165,250,0)');
+
+    grafikon = new Chart(ctx, {
+      type: 'line',
+      data: { labels: cimkek, datasets: [
+        { label: 'Készpénz', data: kpV,
+          borderColor: '#34d399', backgroundColor: gradKp,
+          borderWidth: 3, tension: 0.45, fill: true,
+          pointRadius: 4, pointHoverRadius: 7,
+          pointBackgroundColor: '#34d399', pointBorderColor:'#0f172a', pointBorderWidth:2 },
+        { label: 'Kártyás', data: kaV,
+          borderColor: '#60a5fa', backgroundColor: gradKa,
+          borderWidth: 3, tension: 0.45, fill: true,
+          pointRadius: 4, pointHoverRadius: 7,
+          pointBackgroundColor: '#60a5fa', pointBorderColor:'#0f172a', pointBorderWidth:2 }
+      ]},
+      options: { responsive: true,
+        interaction: { mode:'index', intersect:false },
+        scales: {
+          x: { grid: { color:'rgba(255,255,255,.06)' },
+               ticks: { color:'rgba(232,228,243,.5)' } },
+          y: { beginAtZero: true,
+               grid: { color:'rgba(255,255,255,.06)' },
+               ticks: { color:'rgba(232,228,243,.5)',
+                 callback: function(v){ return v.toLocaleString('hu-HU') + ' Ft'; } } }
+        },
+        plugins: {
+          legend: { labels: { color:'rgba(232,228,243,.8)', usePointStyle:true, pointStyle:'circle', padding:18 } },
+          tooltip: {
+            backgroundColor:'rgba(26,11,46,.95)', borderColor:'rgba(139,92,246,.4)', borderWidth:1,
+            padding:12, titleColor:'#fff', bodyColor:'#e8e4f3', displayColors:true, usePointStyle:true,
+            callbacks: { label: function(c){ return ' ' + c.dataset.label + ': ' + fmt(c.raw); } }
+          }
+        }
+      }
+    });
+  }
+
+  let html = '<thead><tr><th>Időszak</th><th>Készpénz</th><th>Kártyás</th><th>Összesen</th><th>KP %</th><th>Kártya %</th></tr></thead><tbody>';
+  let osszKp = 0, osszKa = 0;
+  sor.forEach(function(x){
+    const ossz = x.kp + x.kartya;
+    osszKp += x.kp; osszKa += x.karty;
+    const kpSzaz = ossz > 0 ? Math.round(x.kp / ossz * 100) : 0;
+    const kaSzaz = ossz > 0 ? Math.round(x.kartya / ossz * 100) : 0;
+    html += '<tr><td>' + x.cimke + '</td><td>' + fmt(x.kp) + '</td><td>' + fmt(x.kartya) +
+            '</td><td><b>' + fmt(ossz) + '</b></td><td>' + kpSzaz + '%</td><td>' + kaSzaz + '%</td></tr>';
+  });
+  const vOssz = osszKp + osszKa;
+  html += '<tr class="ossz-sor"><td>Összesen</td><td>' + fmt(osszKp) + '</td><td>' + fmt(osszKa) +
+          '</td><td><b>' + fmt(vOssz) + '</b></td><td>' + (vOssz>0?Math.round(osszKp/vOssz*100):0) + '%</td><td>' +
+          (vOssz>0?Math.round(osszKa/vOssz*100):0) + '%</td></tr>';
+  html += '</tbody>';
+  tabla.innerHTML = html;
+}
+
+function betoltesFelhobol(){
+  firestoreDB.collection("bolt").doc("adatok").get().then(function(doc){
+    if(doc.exists){
+      let history = doc.data().salesHistory || [];
+      adatok = adatokFeldolgozasa(history);
+      rajzol();
+      let el = document.getElementById('szinkronAllapot');
+      el.textContent = '● Élő kapcsolat — ' + history.length + ' tranzakció a felhőben';
+      el.classList.add('ok');
+    }
+  }).catch(function(err){
+    console.error('Firebase hiba:', err);
+    document.getElementById('szinkronAllapot').textContent = '● Felhőkapcsolati hiba — helyi adatokkal dolgozom';
+  });
+
+  firestoreDB.collection("bolt").doc("adatok").onSnapshot(function(doc){
+    if(doc.exists){
+      let history = doc.data().salesHistory || [];
+      adatok = adatokFeldolgozasa(history);
+      rajzol();
+      let el = document.getElementById('szinkronAllapot');
+      el.textContent = '● Élő kapcsolat — ' + history.length + ' tranzakció a felhőben (frissítve)';
+      el.classList.add('ok');
+    }
+  }, function(err){ console.error('Élő szinkron hiba:', err); });
+}
+
+try {
+  let helyi = JSON.parse(localStorage.getItem('bolt_history'));
+  if(adatok.length === 0){
+    adatok = adatokFeldolgozasa(helyi);
+    rajzol();
+  }
+} catch(e){}
+
+function riportMent(){
+  const tartalom = JSON.stringify({
+    mentesIdeje: new Date().toLocaleString('hu-HU'),
+    napiKimutatas: csoportosit('napi'),
+    hetiKimutatas: csoportosit('heti'),
+    haviKimutatas: csoportosit('havi'),
+    osszesTranzakcio: adatok
+  }, null, 2);
+  const blob = new Blob([tartalom], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'radnotinta_riport_' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+}
+
+function automatikusMentes(){
+  const most = new Date();
+  const utolso = localStorage.getItem('stat_riport') || '';
+  const het = most.getFullYear() + '-H' + hetSzam(most);
+  const nap = most.getDay();
+  const ora = most.getHours();
+  const esedekes = (nap === 6 && ora >= 12) || nap === 0 || nap === 1;
+  if(esedekes && utolso !== het){
+    riportMent();
+    localStorage.setItem('stat_riport', het);
+  }
+}
+
+automatikusMentes();
+rajzol();
+betoltesFelhobol();
+</script>
+</body>
+</html>
