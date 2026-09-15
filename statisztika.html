@@ -338,7 +338,7 @@ function rajzol(){
   let osszKp = 0, osszKa = 0;
   sor.forEach(function(x){
     const ossz = x.kp + x.kartya;
-    osszKp += x.kp; osszKa += x.karty;
+    osszKp += x.kp; osszKa += x.kartya;
     const kpSzaz = ossz > 0 ? Math.round(x.kp / ossz * 100) : 0;
     const kaSzaz = ossz > 0 ? Math.round(x.kartya / ossz * 100) : 0;
     html += '<tr><td>' + x.cimke + '</td><td>' + fmt(x.kp) + '</td><td>' + fmt(x.kartya) +
