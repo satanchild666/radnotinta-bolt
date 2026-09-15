@@ -2637,19 +2637,20 @@ function renderKassza(){
 }
 
 function kasszaNyitas(){
-  if (kassza.datum) { alert('A nap már nyitva van! (' + kassza.datum + ')'); return; }
-  if (kassza.datum) {
-    if (!confirm('A nap már nyitva van (' + kassza.datum + ')!\n\nBiztosan újranyitod? (A korábbi nyitó adatok felülíródnak, de ÚJ napnyitási esemény NEM rögzítődik.)')) return;
-    kassza = { datum: kassza.datum, nyito: kasszaTablaOsszeg(), kpForgalom: 0 };
-    kasszaMentes(); renderKassza();
-    alert('Kassza újranyitva (új rögzítés nélkül): ' + kassza.nyito.toLocaleString('hu-HU') + ' Ft');
-    return;
-  }
-  kassza = { datum: new Date().toLocaleString('hu-HU'), nyito: kasszaTablaOsszeg(), kpForgalom: 0 };
+  if (kassza.datum) { alert('A nap mar nyitva van! (' + kassza.datum ')'); return; }
+  kassza = { datum: new Date().toLocaleString('hu-HU'), nyito: kasszaTablaOsszeg(),Forgalom: 0 };
   kasszaMentes(); renderKassza();
   let openTime = kassza.datum;
   localStorage.setItem('bolt_day_open', openTime);
-  salesHistory.push({ date: openTime, paymentType: 'day_open', items: [], total: 0 });
+
+  // ← ÚJ: címletek összegyűjtése a nyitáskor
+  let cimletek = [];
+  document.querySelectorAll('#cimlet-tbody input').forEach(function(inp){
+      let db = +inp.value || 0;
+      if (db > 0) cimletek.push({ cimlet: +inp.dataset.cimlet, db: db });
+  });
+
+  salesHistory.push({ date: openTime, paymentType: 'day_open', items: [], total: kassza.nyito, cimletek: cimletek });
   saveData();
   alert('Nap nyitva! Nyito kassza: ' + kassza.nyito.toLocaleString('hu-HU') + ' Ft');
 }
