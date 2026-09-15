@@ -155,6 +155,7 @@
       <button class="btn-green" onclick="kasszaNyitas()" style="background:#2196f3;">🌅 NAP NYITÁSA — ez lesz a kassza kezdőállapota</button>
       <button class="btn-red" onclick="kasszaZaras()" style="width:100%;padding:12px;font-size:16px;font-weight:bold;margin-top:8px;">🌙 NAPZÁRÁS & KASSZA-ELSZÁMOLÁS</button>
       <div id="napzar-eredmeny" style="margin-top:14px;"></div>
+     <div id="nyitas-naplo" style="margin-top:20px;"></div>
     </div>
   </div>
 
@@ -2589,9 +2590,10 @@ function cimletekSzoveg() {
 }
 
 function kasszaNapEllenorzes() {
-    const maStr = new Date().toLocaleDateString('hu-HU'); // pl. "2026. 09. 16."
-    if (kassza.datum && kassza.datum !== maStr) {
-        // új nap van: kassza alaphelyzetbe állítása
+    if (!kassza.datum) return;   // nincs nyitva → nincs dolgunk
+    const maStr = new Date().toLocaleDateString('hu-HU');       // "2026. 09. 16."
+    const taroltNap = kassza.datum.slice(0, maStr.length);      // "2026. 09. 16. 18:40:23" -> "2026. 09. 16."
+    if (taroltNap !== maStr) {
         console.log('Új nap észlelve, kassza nullázva');
         kassza.datum = null;
         kassza.nyito = 0;
@@ -2631,6 +2633,7 @@ function renderKassza(){
     document.getElementById('kassza-elvart').textContent = (kassza.nyito + kassza.kpForgalom).toLocaleString('hu-HU') + ' Ft';
     const bontas = document.getElementById('cimlet-bontas');
     if (bontas) bontas.textContent = cimletekSzoveg();
+    nyitasNaploRender();
 }
 
 function kasszaNyitas(){
@@ -2719,6 +2722,24 @@ function frissitsKasszaForgalmat() {
     kasszaMentes();
 }
 
+ function nyitasNaploRender() {
+    let nyitasok = salesHistory.filter(function(t){ return t.paymentType === 'day_open'; });
+    nyitasok.reverse(); // legfrissebb elöl
+    let html = '<h3>📖 Nyitási napló</h3>';
+    if (nyitasok.length === 0) { html += '<i>Még nincs rögzített napnyitás.</i>'; }
+    nyitasok.forEach(function(n){
+        let osszeg = 0, bontas = [];
+        (n.cimletek || []).forEach(function(c){
+            osszeg += c.cimlet * c.db;
+            bontas.push(c.cimlet.toLocaleString('hu-HU') + ' Ft × ' + c.db + ' db');
+        });
+        html += '<div style="border:1px solid #ddd;border-radius:8px;padding:10px;margin:8px 0;background:#fafafa;">';
+        html += '<b>📅 ' + (n.date || '?') + '</b> — Nyitó kassza: <b>' + osszeg.toLocaleString('hu-HU') + ' Ft</b><br>';
+        html += bontas.length ? bontas.join('<br>') : '<i>(nincs címlet bontás rögzítve)</i>';
+        html += '</div>';
+    });
+    document.getElementById('nyitas-naplo').innerHTML = html;
+}
 // ===== KASSZA MODUL VÉGE =====
 
 // ===== CSOMAG LISTA JAVÍTOTT FELÜLÍRÁS =====
