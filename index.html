@@ -101,6 +101,75 @@
   .barcode-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; justify-content:center; align:center; }
   .barcode-content { background:#2d1b4e; color:#e8e4f3; padding:20px; border-radius:16px; width:400px; text-align:center; position:relative; border:1px solid rgba(255,255,255,.15); }
 
+ /* ==== JAVÍTÁSOK: inline stílusok felülírása sötét témához ==== */
+
+/* Szkenner doboz (zöld) */
+#app-header ~ div, .scanner-box, div[style*="background:#e8f5e9"], div[style*="background: #e8f5e9"],
+div[style*="background:#e3f2fd"], div[style*="background:#fffde7"], div[style*="background:#f3e5f5"],
+div[style*="background:#fafafa"], div[style*="background:#ffffff"], div[style*="background: #f8f9fa"] {
+  background: rgba(255,255,255,.07) !important;
+  border: 1px solid rgba(255,255,255,.15) !important;
+  color: #e8e4f3 !important;
+}
+
+/* Szkenner feliratok, szövegek */
+div[style*="color:#1b5e20"], div[style*="color:#0d47a1"], div[style*="color:#333"],
+div[style*="color:#555"], div[style*="color:#000"], span[style*="color:#1b5e20"],
+span[style*="color:#0d47a1"], b[style*="color:#1b5e20"], label[style*="color:#333"] {
+  color: #c9f0d8 !important;
+}
+
+/* Készpénz & Visszajáró panel */
+div[style*="background:#fff9c4"], div[style*="background:#fffde7"] {
+  background: rgba(52,211,153,.1) !important;
+  border: 1px solid rgba(52,211,153,.3) !important;
+}
+
+/* Fizető gombok — kártyás és sztornó */
+button[style*="background:#1976d2"], button[style="background-color:#1976d2"] {
+  background: linear-gradient(135deg,#3b82f6,#1d4ed8) !important;
+  color:#fff !important; border:none !important; border-radius:12px !important;
+  box-shadow:0 4px 14px rgba(59,130,246,.35) !important;
+}
+button[style*="background:#e67e22"], button[style*="background-color:#e67e22"],
+button[style*="background:#f39c12"] {
+  background: linear-gradient(135deg,#f59e0b,#d97706) !important;
+  color:#fff !important; border:none !important; border-radius:12px !important;
+  box-shadow:0 4px 14px rgba(245,158,11,.35) !important;
+}
+
+/* Szürke és világos gombok (Előzmény Kimutatás, Mentés, stb.) */
+button[style*="background:#607d8b"], button[style*="background:#2196f3"],
+button[style*="background:#4caf50"], button[style*="background:#9e9e9e"],
+button[style*="background:#6c757d"] {
+  background: linear-gradient(135deg,#8b5cf6,#6366f1) !important;
+  color:#fff !important; border:none !important; border-radius:12px !important;
+  box-shadow:0 4px 14px rgba(139,92,246,.35) !important;
+}
+
+/* Nap Zárása gomb */
+buttonstyle*="background:#dc3545"], button[style*="background:#e74c3c"] {
+  background: linear-gradient(135deg,#f87171,#dc2626) !important;
+  color:#fff !important; border:none !important; border-radius:12px !important;
+}
+
+/* Nyitás gomb */
+button[style*="background:#28a745"], button[style*="background:#2e7d32"] {
+  background: linear-gradient(135deg,#10b981,#059669) !important;
+  color:#fff !important; border:none !important; border-radius:12px !important;
+}
+
+/* Visszajáró piros szám maradhat, de a melletti halvány szöveg legyen olvasható */
+span[style*="color:#888"], div[style*="color:#888"], small[style*="color:#888"] {
+  color: rgba(232,228,243,.6) !important;
+}
+
+/* Alert-szerű eredmény doboz (napzar-eredmeny) */
+#napzar-eredmeny > div {
+  background: #2d1b4e !important;
+  color: #e8e4f3 !important;
+}
+
  @media print {
     body * { visibility: hidden; }
     .printable-friend-order, .printable-friend-order * { visibility: visible; }
