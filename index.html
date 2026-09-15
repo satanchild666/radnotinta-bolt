@@ -13,230 +13,132 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Segoe UI',Arial,sans-serif; }
 
-  body { min-height:100vh; padding:20px; color:#e8e4f3;
-    background: linear-gradient(135deg, #1a0b2e 0%, #2d1b4e 40%, #44318d 100%);
-    background-attachment: fixed;
+  body {
+    min-height:100vh; padding:20px;
+    background:#eef1f5;
+    color:#111827;
   }
-  body::before, body::after { content:''; position:fixed; border-radius:50%; filter:blur(90px); z-index:0; pointer-events:none; }
-  body::before { width:400px; height:400px; background:rgba(138,79,255,.25); top:-100px; right:-100px; }
-  body::after  { width:350px; height:350px; background:rgba(64,186,213,.15); bottom:-80px; left:-80px; }
 
-  .box { max-width:900px; margin:0 auto; position:relative; z-index:1; padding:24px;
-    background: rgba(255,255,255,.06);
-    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,.12);
-    border-radius: 20px;
-    box-shadow: 0 6px 20px rgba(0,0,0,.3);
+  .box {
+    max-width:900px; margin:0 auto; padding:24px;
+    background:#ffffff;
+    border:1px solid #d5dbe3;
+    border-radius:18px;
+    box-shadow:0 8px 30px rgba(17,24,39,.10);
   }
 
   .header {
-    background: linear-gradient(deg, #c084fc, #818cf8, #22d3ee);
- -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
-    font-size:24pt; font-weight:800; letter-spacing:-.5px;
+    font-size:24pt; font-weight:900; letter-spacing:-.5px;
     text-align:center; padding:14px 12px 18px;
+    color:#0f766e;
   }
 
-  .tabs { display:flex; gap:8px margin-bottom:18px; flex-wrap:wrap; }
+  .tabs { display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
   .tab {
-    flex:1; min-width:140px; padding:13px 10px; border:none;
-    background: rgba(255,255,255,.08);
-    color:rgba(232,228,243,.7); font-weight:600; font-size:15px;
-    border-radius:12px; cursor:pointer; transition: all .2s ease;
+    flex:1; min-width:140px; padding:14px 10px; border:2px solid #d5dbe3;
+    background:#f4f6f9; color:#111827; font-weight:800; font-size:16px;
+    border-radius:12px; cursor:pointer; transition:all .15s ease;
   }
-  .tab:hover { color:#fff; background: rgba(255,255,255,.14); }
+  .tab:hover { border-color:#0f766e; background:#e6f7f5; }
   .tab.active {
-    background:linear-gradient(135deg,#8b5cf6,#6366f1); color:#fff;
-    box-shadow:0 4px 14px rgba(139,92,246,.4);
+    background:#0f766e; color:#ffffff; border-color:#0f766e;
+    box-shadow:0 4px 14px rgba(15,118,110,.35);
   }
 
   .card {
-    background: rgba(255,255,255,.07);
-    border: 1px solid rgba(255,255,255,.12);
-    padding:18px; border-radius:16px; margin-bottom:16px;
+    background:#ffffff;
+    border:2px solid #d5dbe3;
+    padding:18px; border-radius:14px; margin-bottom:16px;
   }
 
-  input,textarea,button,select {
-    width:100%; padding:12px; margin-top:5px;
-    background: rgba(255,255,255,.1);
-    border:1px solid rgba(255,255,255,.2);
-    border-radius:10px; font-size:17px; color:#fff;
+  input, textarea, button, select {
+    width:100%; padding:13px; margin-top:5px;
+    background:#ffffff;
+    border:2px solid #9aa5b4;
+    border-radius:10px; font-size:18px; color:#111827; font-weight:600;
   }
-  input::placeholder, textarea::placeholder { color:rgba(232,228,243,.4); }
-  input:focus,textarea:focus,select:focus {
-    border-color:#8b5cf6; box-shadow:0 00 3px rgba(139,92,246,.25); outline:none;
+  input::placeholder, textarea::placeholder { color:#6b7280; font-weight:500; }
+  input:focus, textarea:focus, select:focus {
+    border-color:#0f766e; box-shadow:0 0 0 3px rgba(15,118,110,.2); outline:none;
   }
-  select option {:#2d1b4e; color:#fff; }
 
   .btn-green {
-    background:linear-gradient(135deg,#10b981,#059669); color:#fff; font-weight:700;
-    border:none; padding:14px; cursor:pointer; font-size:18px; margin-top:10px;
-    border-radius:12px; box-shadow:0 4px 14px rgba(16,185,129,.35);
-    transition: transform .2s ease, box-shadow .2s ease;
+    background:#059669; color:#ffffff; font-weight:900;
+    border:none; padding:16px; cursor:pointer; font-size:19px; margin-top:10px;
+    border-radius:12px; box-shadow:0 4px 14px rgba(5,150,105,.4);
+    transition:transform .15s ease;
   }
-  .btn-green:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(16,185,129,.5); }
+  .btn-green:hover { transform:translateY(-2px); background:#047857; }
 
   .btn-red {
-    background:linear-gradient(135deg,#f87171,#dc2626); color:#fff;
-    border:none; padding:8px 14px; border-radius:10px; cursor:pointer; width:auto; font-weight:700;
+    background:#dc2626; color:#ffffff; font-weight:900;
+    border:none; padding:9px 15px; border-radius:10px; cursor:pointer; width:auto;
   }
 
-  table { width:100%; border-collapse:separate; border-spacing0; margin-top:10px; }
-  th,td { padding:11px 13px; text-align:left; font-size:16px; }
- th {
-    color:rgba(232,228,243,.55); font-size:10pt; text-transform:uppercase; letter-spacing:1.2px;
-    border-bottom:1px solid rgba(255,255,255,.15); font-weight:600;
+  table { width:100%; border-collapse:separate; border-spacing:0; margin-top:10px; }
+  th, td { padding:13px 14px; text-align:left; font-size:17px; color:#111827; }
+  th {
+    font-size:11pt; text-transform:uppercase; letter-spacing:1px;
+    border-bottom:3px solid #0f766e; font-weight:900; color:#0f766e;
   }
-  tbody tr:nth-child(odd) td { background:rgba(255,255,255,.04); }
-  tbody tr:hover td { background:rgba(139,92,246,.14); }
-  td { border-bottom:1px solid rgba(255,255,255,.06); color:rgba(232,228,243,.9); }
-  td b { color:#fff; }
+  tbody tr:nth-child(odd) td { background:#f4f6f9; }
+  tbody tr:hover td { background:#e6f7f5; }
+  td { border-bottom:1px solid #e2e6ec; }
+  td b { color:#000000; }
 
   .total {
-    font-size:24pt; font-weight:800; letter-spacing:-.5px; text-align:right;
-    color:#34d399; margin-top:10px; padding:14px;
-    background: rgba(52,211,153,.08);
-    border:1px solid rgba(52,211,,.25); border-radius:16px;
+    font-size:28pt; font-weight:900; letter-spacing:-.5px; text-align:right;
+    color:#059669; margin-top:10px; padding:16px 18px;
+    background:#ecfdf5;
+    border:3px solid #059669; border-radius:14px;
   }
 
-  .barcode-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; justify-content:center; align:center; }
-  .barcode-content { background:#2d1b4e; color:#e8e4f3; padding:20px; border-radius:16px; width:400px; text-align:center; position:relative; border:1px solid rgba(255,255,255,.15); }
+  .barcode-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(17,24,39,.55); z-index:1000; justify-content:center; align-items:center; }
+  .barcode-content { background:#ffffff; color:#111827; padding:20px; border-radius:16px;
+    width:400px; text-align:center; position:relative; border:2px solid #d5dbe3;
+    box-shadow:0 12px 40px rgba(17,24,39,.3); }
 
- /* ==== JAVÍTÁSOK: inline stílusok felülírása sötét témához ==== */
+  /* ==== Inline stílusok felülírása (sötét verzió maradványai) ==== */
+  div[style*="background:#e8f5e9"], div[style*="background: #e8f5e9"],
+  div[style*="background:#e3f2fd"], div[style*="background:#fffde7"],
+  div[style*="background:#f3e5f5"], div[style*="background:#fafafa"],
+  div[style*="background:#ffffff"], div[style*="background: #f8f9fa"],
+  div[style*="background:#fff9c4"], div[style*="background:#e8eaf6"] {
+    background:#ffffff !important;
+    border:2px solid #d5dbe3 !important;
+    color:#111827 !important;
+  }
+  div[style*="color:#1b5e20"], div[style*="color:#0d47a1"], div[style*="color:#333"],
+  div[style*="color:#555"], span[style*="color:#1b5e20"], span[style*="color:#0d47a1"],
+  b[style*="color:#1b5e20"], label[style*="color:#333"] {
+    color:#111827 !important;
+  }
+  button[style*="background:#1976d2"], button[style*="background:#607d8b"],
+  button[style*="background:#2196f3"], button[style*="background:#9e9e9e"],
+  button[style*="background:#6c757d"] {
+    background:#1d4ed8 !important; color:#ffffff !important;
+    border:none !important; border-radius:12px !important; font-weight:900 !important;
+  }
+  button[style*="background:#e67e22"], button[style*="background:#f39c12"] {
+    background:#d97706 !important; color:#ffffff !important;
+    border:none !important; border-radius:12px !important; font-weight:900 !important;
+  }
+  button[style*="background:#dc3545"], button[style*="background:#e74c3c"] {
+    background:#dc2626 !important; color:#ffffff !important;
+    border:none !important; border-radius:12px !important; font-weight:900 !important;
+  }
+  button[style*="background:#28a745"], button[style*="background:#2e7d32"] {
+    background:#059669 !important; color:#ffffff !important;
+    border:none !important; border-radius:12px !important; font-weight:900 !important;
+  }
+  span[style*="color:#888"], div[style*="color:#888"], small[style*="color:#888"] {
+    color:#4b5563 !important;
+  }
+  #napzar-eredmeny > div { background:#ffffff !important; color:#111827 !important; }
+  select option { background:#ffffff; color:#111827; }
 
-/* Szkenner doboz (zöld) */
-#app-header ~ div, .scanner-box, div[style*="background:#e8f5e9"], div[style*="background: #e8f5e9"],
-div[style*="background:#e3f2fd"], div[style*="background:#fffde7"], div[style*="background:#f3e5f5"],
-div[style*="background:#fafafa"], div[style*="background:#ffffff"], div[style*="background: #f8f9fa"] {
-  background: rgba(255,255,255,.07) !important;
-  border: 1px solid rgba(255,255,255,.15) !important;
-  color: #e8e4f3 !important;
-}
-
-/* Szkenner feliratok, szövegek */
-div[style*="color:#1b5e20"], div[style*="color:#0d47a1"], div[style*="color:#333"],
-div[style*="color:#555"], div[style*="color:#000"], span[style*="color:#1b5e20"],
-span[style*="color:#0d47a1"], b[style*="color:#1b5e20"], label[style*="color:#333"] {
-  color: #c9f0d8 !important;
-}
-
-/* Készpénz & Visszajáró panel */
-div[style*="background:#fff9c4"], div[style*="background:#fffde7"] {
-  background: rgba(52,211,153,.1) !important;
-  border: 1px solid rgba(52,211,153,.3) !important;
-}
-
-/* Fizető gombok — kártyás és sztornó */
-button[style*="background:#1976d2"], button[style="background-color:#1976d2"] {
-  background: linear-gradient(135deg,#3b82f6,#1d4ed8) !important;
-  color:#fff !important; border:none !important; border-radius:12px !important;
-  box-shadow:0 4px 14px rgba(59,130,246,.35) !important;
-}
-button[style*="background:#e67e22"], button[style*="background-color:#e67e22"],
-button[style*="background:#f39c12"] {
-  background: linear-gradient(135deg,#f59e0b,#d97706) !important;
-  color:#fff !important; border:none !important; border-radius:12px !important;
-  box-shadow:0 4px 14px rgba(245,158,11,.35) !important;
-}
-
-/* Szürke és világos gombok (Előzmény Kimutatás, Mentés, stb.) */
-button[style*="background:#607d8b"], button[style*="background:#2196f3"],
-button[style*="background:#4caf50"], button[style*="background:#9e9e9e"],
-button[style*="background:#6c757d"] {
-  background: linear-gradient(135deg,#8b5cf6,#6366f1) !important;
-  color:#fff !important; border:none !important; border-radius:12px !important;
-  box-shadow:0 4px 14px rgba(139,92,246,.35) !important;
-}
-
-/* Nap Zárása gomb */
-buttonstyle*="background:#dc3545"], button[style*="background:#e74c3c"] {
-  background: linear-gradient(135deg,#f87171,#dc2626) !important;
-  color:#fff !important; border:none !important; border-radius:12px !important;
-}
-
-/* Nyitás gomb */
-button[style*="background:#28a745"], button[style*="background:#2e7d32"] {
-  background: linear-gradient(135deg,#10b981,#059669) !important;
-  color:#fff !important; border:none !important; border-radius:12px !important;
-}
-
-/* Visszajáró piros szám maradhat, de a melletti halvány szöveg legyen olvasható */
-span[style*="color:#888"], div[style*="color:#888"], small[style*="color:#888"] {
-  color: rgba(232,228,243,.6) !important;
-}
-
-/* Alert-szerű eredmény doboz (napzar-eredmeny) */
-#napzar-eredmeny > div {
-  background: #2d1b4e !important;
-  color: #e8e4f3 !important;
-}
-/* Fehér inputok javítása */
-input[disabled], input:disabled, input[readonly] {
-  background: rgba(255,255,255,.08) !important;
-  color: rgba(232,228,243,.5) !important;
-  border: 1px solid rgba(255,255,255,.15) !important;
-}
-input[style*="background:#fff"], input[style*="background: #fff"],
-input[style*="background:#ffffff"], input[style*="background:white"],
-input[style*="background-color:#fff"], input[style*="background-color: white"] {
-  background: rgba(255,255,255,.1) !important;
-  color: #fff !important;
-  border: 1px solid rgba(255,255,255,.2) !important;
-}
-/* ==== VILÁGOSABB SZÖVEGEK ==== */
-
-/* Általános szöveg */
-body { color: #ffffff !important; }
-.box, .card, .panel { color: #ffffff !important }
-
-/* Feliratok, címkék, fejlécek */
-th { color: #d1cfff !important; font-size: 12pt !important; }
-td { color: #ffffffimportant; }
-td b, th b { color: #ffffff !important; }
-
-/* Gomb-feliratok */
-.tab { color: #e8e4f3 !important; font-size: 15px !important; }
-.tab:hover { color: #ffffff !important; }
-
-/* Beviteli mezők szövege és helyőrzője */
-input, textarea, select {
-  color: #ffffff !important;
-  font-size: 17px !important;
-}
-input::placeholder, textarea::placeholder {
-  color: rgba(255,255,255,.75) !important;
-}
-
-/* Halvány szürke segédszövegek (pl. "Nincs beírt összeg", státuszok) */
-span[style*="color:#888"], div[style*="color:#888"],
-small[style*="color:#888"], .felirat, .szinkron {
-  color: rgba(255,255,255,.85) !important;
-}
-
-/* A JS által beállított halvány szövegek is világosabbak legyenek */
-label, p small, b, h2, h3, h4 {
-  color: #f0eeff !important;
-}
-
-/* Kosár fejléc (NÉV, ÁR, DB...) és táblázat betűi nagyobbak */
-th { letter-spacing: .5px !important; }
-
-/* Az összes olvasható/letiltott input sötétítése – erővel */
-input[readonly], input[disabled],
-#cimlet-info, #kp-visszajaró-info, #osszeg-info {
-  background: rgba(255,255,255,.1) !important;
-  background-color: rgba(255,255,255,.1) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(255,255,255,.2) !important;
-  opacity: 1 !important;
-}
-
-/* Ha minden más nem működik: általános fedőszabály az összes inputra a kassza szekcióban */
-input {
-  background-color: rgba(255,255,255,.1) !important;
-  color: #ffffff !important;
-}
-
- @media print {
+  @media print {
     body * { visibility: hidden; }
     .printable-friend-order, .printable-friend-order * { visibility: visible; }
     .printable-friend-order { position: absolute; left: 0; top: 0; width: 100%; border: none !important; background: #fff !important; box-shadow: none !important; }
