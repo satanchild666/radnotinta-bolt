@@ -220,6 +220,22 @@ label, p small, b, h2, h3, h4 {
 /* Kosár fejléc (NÉV, ÁR, DB...) és táblázat betűi nagyobbak */
 th { letter-spacing: .5px !important; }
 
+/* Az összes olvasható/letiltott input sötétítése – erővel */
+input[readonly], input[disabled],
+#cimlet-info, #kp-visszajaró-info, #osszeg-info {
+  background: rgba(255,255,255,.1) !important;
+  background-color: rgba(255,255,255,.1) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255,255,255,.2) !important;
+  opacity: 1 !important;
+}
+
+/* Ha minden más nem működik: általános fedőszabály az összes inputra a kassza szekcióban */
+input {
+  background-color: rgba(255,255,255,.1) !important;
+  color: #ffffff !important;
+}
+
  @media print {
     body * { visibility: hidden; }
     .printable-friend-order, .printable-friend-order * { visibility: visible; }
