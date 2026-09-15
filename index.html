@@ -2574,7 +2574,32 @@ function cimletekSzove() {
     return sorok.length > 0 ? sorok.join('\n') : 'Nincs beütött címlet.';
 }
  
-function initCimletTabla(){
+function cimletekSzoveg() {
+    let sorok = [];
+    document.querySelectorAll('#cimlet-tbody input').forEach(function(inp){
+        let db = +inp.value || 0;
+        if (db > 0) {
+            let cimlet = +inp.dataset.cimlet;
+            sorok.push(cimlet.toLocaleString('hu-HU') + ' Ft × ' + db + ' db = ' +
+                (cimlet * db).toLocaleString('hu-HU') + ' Ft');
+        }
+    });
+    return sorok.length > 0 ? sorok.join('\n') : 'Nincs beütött címlet.';
+}
+
+function kasszaNapEllenorzes() {
+    const maStr = new Date().toLocaleDateString('hu-HU'); // pl. "2026. 09. 16."
+    if (kassza.datum && kassza.datum !== maStr) {
+        // új nap van: kassza alaphelyzetbe állítása
+        console.log('Új nap észlelve, kassza nullázva');
+        kassza.datum = null;
+        kassza.nyito = 0;
+        kassza.kpForgalom = 0;
+        kasszaMentes();
+    }
+}
+
+ function initCimletTabla(){
   let tb = document.getElementById('cimlet-tbody');
   if (!tb || tb.children.length > 0) return;
   KASSZA_CIMLETEK.forEach(function(c){
@@ -2593,18 +2618,6 @@ function initCimletTabla(){
     const bontas = document.getElementById('cimlet-bontas');
     if (bontas) bontas.textContent = cimletekSzoveg();
   });
-}
-
-function kasszaNapEllenorzes() {
-    const maStr = new Date().toLocaleDateString('hu-HU'); // pl. "2026. 09. 16."
-    if (kassza.datum && kassza.datum !== maStr) {
-        // új nap van: kassza alaphelyzetbe állítása
-        console.log('Új nap észlelve, kassza nullázva');
-        kassza.datum = null;
-        kassza.nyito = 0;
-        kassza.kpForgalom = 0;
-        kasszaMentes();
-    }
 }
  
 function renderKassza(){
