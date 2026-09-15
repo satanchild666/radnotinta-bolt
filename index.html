@@ -169,6 +169,19 @@ span[style*="color:#888"], div[style*="color:#888"], small[style*="color:#888"] 
   background: #2d1b4e !important;
   color: #e8e4f3 !important;
 }
+/* Fehér inputok javítása */
+input[disabled], input:disabled, input[readonly] {
+  background: rgba(255,255,255,.08) !important;
+  color: rgba(232,228,243,.5) !important;
+  border: 1px solid rgba(255,255,255,.15) !important;
+}
+input[style*="background:#fff"], input[style*="background: #fff"],
+input[style*="background:#ffffff"], input[style*="background:white"],
+input[style*="background-color:#fff"], input[style*="background-color: white"] {
+  background: rgba(255,255,255,.1) !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.2) !important;
+}
 
  @media print {
     body * { visibility: hidden; }
@@ -2969,7 +2982,7 @@ focusMainTrap();
     });
 
     // helyőrzők (placeholder) világosítása a beviteli mezőkben
-    document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(function(el) {
+    document.querySelectorAll('input, textarea, select').forEach(function(el) {
       el.style.color = '#fff';
       el.style.background = 'rgba(255,255,255,.1)';
     });
