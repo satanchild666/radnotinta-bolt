@@ -137,6 +137,41 @@
   }
   #napzar-eredmeny > div { background:#ffffff !important; color:#111827 !important; }
   select option { background:#ffffff; color:#111827; }
+/* ==== TÁBLÁZATON BELÜLI KIS GOMBOK JAVÍTÁSA ==== */
+
+/* Készlet fül: Módosít / Töröl / címlet gombok maradjanak kicsik, egymás alatt */
+td button, td input[type="button"], .keszlet-tabla button {
+  width: auto !important;
+  min-width: 90px;
+  padding: 7px 14px !important;
+  margin: 3px 0 !important;
+  font-size: 15px !important;
+  display: block;
+}
+
+/* Csomagok fül: + / − és X gombok kicsik legyenek, ne nyúljanak szét */
+#csomagok-tabla button, .csomag-tabla button,
+button[onclick*="csomag"], button[onclick*="mennyiseg"], button[onclick*="torolCsomag"] {
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px;
+  padding: 0 !important;
+  margin: 2px !important;
+  font-size: 17px !important;
+  font-weight: 900;
+  border-radius: 8px !important;
+  display: inline-block;
+}
+
+/* A darabszám (1, 2...) maradjon középen, normál méretű */
+#csomagok-tabla input[type="number"], .csomag-tabla input[type="number"] {
+  width: 50px !important;
+  padding: 6px !important;
+  text-align: center;
+}
+
+/* Táblázat cellák tartalma ne csússzon szét */
+td { vertical-align: middle !important; }
 
   @media print {
     body * { visibility: hidden; }
