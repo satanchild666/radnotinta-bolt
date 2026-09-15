@@ -2650,7 +2650,7 @@ function kasszaNyitas(){
       if (db > 0) cimletek.push({ cimlet: +inp.dataset.cimlet, db: db });
   });
 
-  salesHistory.push({ date: openTime, paymentType: 'day_open', items: [], total: kassza.nyitok: cimletek });
+    salesHistory.push({ date: openTime, paymentType: 'day_open', items: [], total: kassza.nyito, cimletek: cimletek });
   saveData();
   alert('Nap nyitva! Nyito kassza: ' + kassza.nyito.toLocaleString('hu-HU') + ' Ft');
 }
