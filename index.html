@@ -2630,8 +2630,9 @@ function kasszaNapEllenorzes() {
 }
  
 function renderKassza(){
-    kasszaNapEllenorzes();      // ← ÚJ: új napnál nulláz
-    frissitsKasszaForgalmat();  // Újraszámolja a history alapján, mielőtt kiírná!
+    kasszaNapEllenorzes();
+    if (kassza.datum) frissitsKasszaForgalmat();  // ← csak nyitott kasszánál számol újra!
+    else kassza.kpForgalom = 0;                   // ← zárás után nulla
     initCimletTabla();
     document.getElementById('kassza-datum').textContent = kassza.datum || '— nincs nyitva —';
     document.getElementById('kassza-nyito').textContent = kassza.nyito.toLocaleString('hu-HU') + ' Ft';
