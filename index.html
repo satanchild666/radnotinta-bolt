@@ -2649,25 +2649,21 @@ function frissitsKasszaForgalmat() {
     let history = JSON.parse(localStorage.getItem('bolt_history') || '[]');
     let kpSum = 0;
 
-    const ma = new Date().toISOString().slice(0, 10); // pl. "2026-09-15"
+    // mai dátum helyi idő szerint: "2026-09-15"
+    const most = new Date();
+    const ma = most.getFullYear() + '-' +
+        String(most.getMonth() + 1).padStart(2, '0') + '-' +
+        String(most.getDate()).padStart(2, '0');
 
     history.forEach(trx => {
         if (!trx || trx.paymentType !== 'cash') return;
 
-        // a tranzakció dátumának kinyerése
-        let d = trx.datum || trx.date || trx.timestamp || trx.ido || null;
-        if (!d) return;
-
-        // Date objektum, ISO string vagy "2026. 09. 15." formátum kezelése
-        let nap;
-        if (d instanceof Date) {
-            nap = d.toISOString().slice(0, 10);
-        } else if (typeof d.toDate === 'function') {
-            // Firestore Timestamp esetén
-            nap = d.toDate().toISOString().slice(0, 10);
-        } else {
-            nap = String(d).replace(/\./g, '-').replace(' ', 'T').slice(0, 10);
-        }
+        // dátum normalizálása: szóközök és pontok eltüntetése
+        // "2026. 09. 15. 8:05:54"  ->  "2026-09-15"
+        const nap = String(trx.date || trx.datum || '')
+            .replace(/[.\s]/g, '-')
+            .replace(/-+/g, '-')
+            .slice(0, 10);
 
         if (nap === ma) {
             kpSum += Number(trx.total || trx.vegosszeg || 0);
@@ -2677,6 +2673,7 @@ function frissitsKasszaForgalmat() {
     kassza.kpForgalom = kpSum;
     kasszaMentes();
 }
+
 // ===== KASSZA MODUL VÉGE =====
 
 // ===== CSOMAG LISTA JAVÍTOTT FELÜLÍRÁS =====
