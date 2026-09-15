@@ -2574,13 +2574,13 @@ function cimletekSzove() {
     return sorok.length > 0 ? sorok.join('\n') : 'Nincs beütött címlet.';
 }
  
-function CimletTabla(){
+function initCimletTabla(){
   let tb = document.getElementById('cimlet-tbody');
   if (!tb || tb.children.length > 0) return;
   KASSZA_CIMLETEK.forEach(function(c){
     let tr = document.createElement('tr');
     tr.innerHTML = '<td><b>' + c.toLocaleString('hu-HU') + ' Ft</b></td>' +
-      '<td><input type="number" min="0" value="0" data-cimlet="' + c + '" style="width:90px;margin:0;text:center;font-size:16px;"></td>' +
+      '<td><input type="number" min="0" value="0" data-cimlet="' + c + '" style="width:90px;margin:0;text-align:center;font-size:16px;"></td>' +
       '<td class="cim-sum" style="font-weight:bold;">0 Ft</td>';
     tb.appendChild(tr);
   });
@@ -2590,7 +2590,6 @@ function CimletTabla(){
     inp.closest('tr').querySelector('.cim-sum').textContent =
       ((+inp.dataset.cimlet) * (+inp.value || 0)).toLocaleString('hu-HU') + ' Ft';
     document.getElementById('cimlet-osszeg').textContent = kasszaTablaOsszeg().toLocaleString('hu-HU');
-    // ← ÚJ: címlet bontás frissítése
     const bontas = document.getElementById('cimlet-bontas');
     if (bontas) bontas.textContent = cimletekSzoveg();
   });
