@@ -173,6 +173,27 @@ button[onclick*="csomag"], button[onclick*="mennyiseg"], button[onclick*="torolC
 /* Táblázat cellák tartalma ne csússzon szét */
 td { vertical-align: middle !important; }
 
+ /* ==== FÜLKÖK JAVÍTÁSA – mind beférjenek, egy sorban ==== */
+.tabs {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 6px !important;
+}
+.tab {
+  min-width: 0 !important;      /* a 140px minimum eltüntetése */
+  flex: 1 1 0 !important;       /* mind egyforma szélességű */
+  padding: 12px 4px !important; /* kisebb oldaltérköz */
+  font-size: 14px !important;   /* kicsit kisebb betű, még mindig jól olvasható */
+  white-space: nowrap;          /* a felirat ne törjön két sorba */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Kis képernyőn / keskeny ablaknán engedjük tördelni */
+@media (max-width: 700px) {
+  .tabs { flex-wrap: wrap !important; }
+  .tab { flex: 1 1 45% !important; white-space: normal; }
+}
+
   @media print {
     body * { visibility: hidden; }
     .printable-friend-order, .printable-friend-order * { visibility: visible; }
