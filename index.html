@@ -182,6 +182,43 @@ input[style*="background-color:#fff"], input[style*="background-color: white"] {
   color: #fff !important;
   border: 1px solid rgba(255,255,255,.2) !important;
 }
+/* ==== VILÁGOSABB SZÖVEGEK ==== */
+
+/* Általános szöveg */
+body { color: #ffffff !important; }
+.box, .card, .panel { color: #ffffff !important }
+
+/* Feliratok, címkék, fejlécek */
+th { color: #d1cfff !important; font-size: 12pt !important; }
+td { color: #ffffffimportant; }
+td b, th b { color: #ffffff !important; }
+
+/* Gomb-feliratok */
+.tab { color: #e8e4f3 !important; font-size: 15px !important; }
+.tab:hover { color: #ffffff !important; }
+
+/* Beviteli mezők szövege és helyőrzője */
+input, textarea, select {
+  color: #ffffff !important;
+  font-size: 17px !important;
+}
+input::placeholder, textarea::placeholder {
+  color: rgba(255,255,255,.75) !important;
+}
+
+/* Halvány szürke segédszövegek (pl. "Nincs beírt összeg", státuszok) */
+span[style*="color:#888"], div[style*="color:#888"],
+small[style*="color:#888"], .felirat, .szinkron {
+  color: rgba(255,255,255,.85) !important;
+}
+
+/* A JS által beállított halvány szövegek is világosabbak legyenek */
+label, p small, b, h2, h3, h4 {
+  color: #f0eeff !important;
+}
+
+/* Kosár fejléc (NÉV, ÁR, DB...) és táblázat betűi nagyobbak */
+th { letter-spacing: .5px !important; }
 
  @media print {
     body * { visibility: hidden; }
