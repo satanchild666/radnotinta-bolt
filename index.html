@@ -2724,7 +2724,7 @@ function frissitsKasszaForgalmat() {
 }
 
  function nyitasNaploRender() {
-    let nyitasok = salesHistory.filter(function(t){ return t.paymentType === 'day_open'; });
+    let nyitasok = salesHistory.filter(function(t){ return t.paymentType === 'day_open' && (t.cimletek || []).length > 0; });
     nyitasok.reverse(); // legfrissebb elöl
     let html = '<h3>📖 Nyitási napló</h3>';
     if (nyitasok.length === 0) { html += '<i>Még nincs rögzített napnyitás.</i>'; }
