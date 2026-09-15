@@ -2561,14 +2561,14 @@ function kasszaTablaOsszeg(){
   return sum;
 }
  
-function cimletekSzoveg() {
+function cimletekSzove() {
     let sorok = [];
     document.querySelectorAll('#cimlet-tbody input').forEach(function(inp){
         let db = +inp.value || 0;
         if (db > 0) {
             let cimlet = +inp.dataset.cimlet;
-            sorok(cimlet.toLocaleString('hu-HU') + ' Ft × ' + db ' db = ' +
-                       (cimlet * db).toLocaleString('-HU') + ' Ft');
+            sorok.push(cimlet.toLocaleString('hu-HU') + ' Ft × ' + db + ' db = ' +
+                (cimlet * db).toLocaleString('hu-HU') + ' Ft');
         }
     });
     return sorok.length > 0 ? sorok.join('\n') : 'Nincs beütött címlet.';
