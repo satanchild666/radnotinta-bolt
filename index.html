@@ -2788,12 +2788,17 @@ focusMainTrap();
     function automatikusNapiZarasMentes() {
         const datum = new Date().toISOString().split('T')[0];
         
-        // Csak a tiszta biztonsági JSON mentést futtatjuk le hiba nélkül a háttérben
+        // 1. Teljes biztonsági mentés (.json)
         if (typeof exportJSON === 'function') {
             exportJSON();
         }
 
-        console.log(`Automatikus napi zárás és mentés sikeresen lefutott: ${datum}`);
+        // 2. Teljes Kimutatás / Excel (4 munkalap)
+        if (typeof exportTeljesExcel === 'function') {
+            exportTeljesExcel();
+        }
+
+        console.log(`Automatikus napi zárás, JSON és Excel kimutatás lefutott: ${datum}`);
     }
 
     // Időzítő: percenként ellenőrzi, hogy pontosan 18:00 óra van-e
