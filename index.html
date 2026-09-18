@@ -2847,6 +2847,41 @@ focusMainTrap();
   document.addEventListener('click', function(){ setTimeout(sotetTheme, 100); });
 })();
 </script>
+ 
+<script>
+    // --- AUTOMATIKUS 18:00 ÓRÁS NAPI ZÁRÁS ÉS MENTÉS ---
+    function automatikusNapiZarasMentes() {
+        const datum = new Date().toISOString().split('T')[0];
+        
+        // 1. Lefuttatja az Excel / kimutatás mentést
+        if (typeof exportTeljesExcel === 'function') {
+            exportTeljesExcel();
+        }
 
+        // 2. Pici várakozás (1 másodperc), hogy a böngésző ne blokkolja a második fájlt
+        setTimeout(() => {
+            if (typeof exportJSON === 'function') {
+                exportJSON();
+            }
+        }, 1000); // 1000 ezredmásodperc = 1 másodperc
+
+        console.log(`Automatikus napi zárás és mentés sikeresen lefutott: ${datum}`);
+    }
+
+    // Időzítő: percenként ellenőrzi, hogy pontosan 18:00 óra van-e
+    setInterval(() => {
+        const now = new Date();
+        if (now.getHours() === 18 && now.getMinutes() === 0) {
+            const utolsoMentes = localStorage.getItem('radnotinta_utolso_auto_zaras');
+            const maiNap = now.toISOString().split('T')[0];
+
+            // Biztosítjuk, hogy egy nap csak egyszer fusson le automatikusan
+            if (utolsoMentes !== maiNap) {
+                automatikusNapiZarasMentes();
+                localStorage.setItem('radnotinta_utolso_auto_zaras', maiNap);
+            }
+        }
+    }, 60000); // 60 000 ezredmásodperc = 1 perc
+</script>
 </body>
 </html>
