@@ -2782,72 +2782,7 @@ renderFriendsOrders();
 renderCart(); 
 focusMainTrap();
 </script>
- 
- <script>
-(function(){
-  function sotetTheme() {
-    // világos háttérszínek felismerése
-    function vilagosE(szin) {
-      if (!szin || szin === 'rgba(0, 0, 0, 0)' || szin === 'transparent') return false;
-      let m = szin.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-      if (!m) return false;
-      let r = +m[1], g = +m[2], b = +m[3];
-      return (r + g + b) > 480; // világos, ha a csatornák összege nagy
-    }
 
-    document.querySelectorAll('div, span, td, th, tr, section, p, label, h1, h2, h3, h4, b, small').forEach(function(el) {
-      let st = el.style;
-      if (!st) return;
-
-      // világos inline háttér -> sötét üveglap
-      if (st.background || st.backgroundColor) {
-        let bg = getComputedStyle(el).backgroundColor;
-        if (vilagosE(bg)) {
-          el.style.background = 'rgba(255,255,255,.07)';
-          el.style.backgroundColor = 'rgba(255,255,255,.07)';
-          el.style.color = '#e2e8f0'; // Elegáns, jól olvasható törtfehér
-        }
-      }
-      // sötét szövegszín -> jól olvasható világos (nem vakító fehér)
-      if (st.color) {
-        let c = getComputedStyle(el).color;
-        let m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (m && (+m[1] + +m[2] + +m[3]) < 300) {
-          el.style.color = '#f1f5f9'; // Kontrasztos, de kellemes olvasási szín
-        }
-      }
-      // gombok: világos/szürke inline háttér -> lila gradiens
-      if (el.tagName === 'BUTTON' && (st.background || st.backgroundColor)) {
-        let bg = getComputedStyle(el).backgroundColor;
-        let m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (m) {
-          let r = +m[1], g = +m[2], b = +m[3];
-          // nem zöld és nem piros gombokat egységes lila gradiensre
-          if (!(g > r + 40 && g > b + 40) && !(r > g + 60 && r > b + 60)) {
-            el.style.background = 'linear-gradient(135deg,#8b5cf6,#6366f1)';
-            el.style.color = '#fff';
-            el.style.border = 'none';
-            el.style.borderRadius = '12px';
-          }
-        }
-      }
-    });
-
-    // helyőrzők (placeholder) világosítása a beviteli mezőkben
-    document.querySelectorAll('input, textarea, select').forEach(function(el) {
-      el.style.color = '#f1f5f9';
-      el.style.background = 'rgba(255,255,255,.1)';
-    });
-  }
-
-  // futtatás betöltéskor és fülváltásnál is
-  document.addEventListener('DOMContentLoaded', sotetTheme);
-  window.addEventListener('load', sotetTheme);
-  // fülváltás figyelése (ha a lapok onclickkel váltanak)
-  document.addEventListener('click', function(){ setTimeout(sotetTheme, 100); });
-})();
-</script>
- 
 <script>
     // --- AUTOMATIKUS 18:00 ÓRÁS NAPI ZÁRÁS ÉS MENTÉS ---
     function automatikusNapiZarasMentes() {
