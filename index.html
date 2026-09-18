@@ -2813,7 +2813,7 @@ focusMainTrap();
         let c = getComputedStyle(el).color;
         let m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
         if (m && (+m[1] + +m[2] + +m[3]) < 300) {
-         el.style.color = '#ffffff```
+         el.style.color = #ffffff
  }
       }
       // gombok: világos/szürke inline háttér -> lila gradiens
@@ -2853,17 +2853,10 @@ focusMainTrap();
     function automatikusNapiZarasMentes() {
         const datum = new Date().toISOString().split('T')[0];
         
-        // 1. Lefuttatja az Excel / kimutatás mentést
-        if (typeof exportTeljesExcel === 'function') {
-            exportTeljesExcel();
+        // Csak a tiszta biztonsági JSON mentést futtatjuk le hiba nélkül a háttérben
+        if (typeof exportJSON === 'function') {
+            exportJSON();
         }
-
-        // 2. Pici várakozás (1 másodperc), hogy a böngésző ne blokkolja a második fájlt
-        setTimeout(() => {
-            if (typeof exportJSON === 'function') {
-                exportJSON();
-            }
-        }, 1000); // 1000 ezredmásodperc = 1 másodperc
 
         console.log(`Automatikus napi zárás és mentés sikeresen lefutott: ${datum}`);
     }
@@ -2875,13 +2868,12 @@ focusMainTrap();
             const utolsoMentes = localStorage.getItem('radnotinta_utolso_auto_zaras');
             const maiNap = now.toISOString().split('T')[0];
 
-            // Biztosítjuk, hogy egy nap csak egyszer fusson le automatikusan
             if (utolsoMentes !== maiNap) {
                 automatikusNapiZarasMentes();
                 localStorage.setItem('radnotinta_utolso_auto_zaras', maiNap);
             }
         }
-    }, 60000); // 60 000 ezredmásodperc = 1 perc
+    }, 60000);
 </script>
 </body>
 </html>
