@@ -2805,16 +2805,16 @@ focusMainTrap();
         if (vilagosE(bg)) {
           el.style.background = 'rgba(255,255,255,.07)';
           el.style.backgroundColor = 'rgba(255,255,255,.07)';
-          el.style.color = '#e8e4f3';
+          el.style.color = '#e2e8f0'; // Elegáns, jól olvasható törtfehér
         }
       }
-      // sötét szövegszín -> világos
+      // sötét szövegszín -> jól olvasható világos (nem vakító fehér)
       if (st.color) {
         let c = getComputedStyle(el).color;
         let m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
         if (m && (+m[1] + +m[2] + +m[3]) < 300) {
-         el.style.color = '#ffffff'
- }
+          el.style.color = '#f1f5f9'; // Kontrasztos, de kellemes olvasási szín
+        }
       }
       // gombok: világos/szürke inline háttér -> lila gradiens
       if (el.tagName === 'BUTTON' && (st.background || st.backgroundColor)) {
@@ -2835,7 +2835,7 @@ focusMainTrap();
 
     // helyőrzők (placeholder) világosítása a beviteli mezőkben
     document.querySelectorAll('input, textarea, select').forEach(function(el) {
-      el.style.color = '#fff';
+      el.style.color = '#f1f5f9';
       el.style.background = 'rgba(255,255,255,.1)';
     });
   }
