@@ -1557,7 +1557,7 @@ function sztornoTranzakcio(index) {
         return;
     }
 
-    if (!confirm("Biztosan sztornózod ezt a korábbi rendelést? A termékek visszakerülnek a készletbe, és egy negatív jóváírás keletkezik a statisztikában.")) {
+    if (!confirm("Biztosan sztornózod ezt a korábbi rendelést? A termékek visszakerülnek a készletbe, bekerülnek a kosárba a módosításhoz, és egy negatív jóváírás keletkezik a statisztikában.")) {
         return;
     }
 
@@ -1598,8 +1598,6 @@ function sztornoTranzakcio(index) {
     };
 
     salesHistory.push(negativTrx);
-    
-    // Megjelöljük az eredeti tranzakciót sztornózottként (így a te eljárásod szerinti property-t használja)
     tranzakcio.sztoronozva = true;
 
     localStorage.setItem('bolt_history', JSON.stringify(salesHistory));
@@ -1612,19 +1610,23 @@ function sztornoTranzakcio(index) {
         localStorage.setItem('bolt_kassza', JSON.stringify(kasszaData));
     }
 
-    // 4. Mentés és frissítés
+    // 4. TÉTELEK VISSZATÖLTÉSE A KOSÁRBA
+    cart = JSON.parse(JSON.stringify(tranzakcio.items));
+
+    // 5. Mentés és felületek frissítése
     saveData(); 
     renderInv();
+    renderCart(); // Ez rajzolja ki újra a kosarat, hogy azonnal látszódjanak a tételek!
     if (typeof renderKassza === 'function') renderKassza();
     
-    // Előzmény ablak frissítése, hogy azonnal látszódjon a változás
+    // Előzmény ablak frissítése / bezárása
     var box = document.getElementById('history-box');
     if (box && box.style.display === 'block') {
         box.style.display = 'none';
         showHistoryModal();
     }
 
-    alert("Siker! A tranzakció sztornózva lett, a készlet és a statisztika frissült.");
+    alert("Siker! A tranzakció sztornózva lett, a tételek visszakerültek a kosárba, a készlet és a statisztika frissült.");
 }
 
 function calculateChange() {
