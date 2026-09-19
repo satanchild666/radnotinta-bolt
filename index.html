@@ -118,6 +118,7 @@
           <button class="btn-green" onclick="openDay()" style="margin-top:0;">Nyitás</button>
           <button class="btn-red" onclick="closeDay()">Nap Zárása</button>
           <button onclick="showHistoryModal()" style="background:#6c757d; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold;">Előzmény Kimutatás</button>
+          <button onclick="showTopProductsModal()" style="background:#17a2b8; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px;">🏆 Top Termékek Kimutatás</button>
       </div>
       <div id="history-box" style="margin-top: 15px; background: #fff; padding: 15px; border: 1px solid #ccc; border-radius: 5px; max-height: 400px; overflow-y: auto; display: none;"></div>
     </div>
@@ -2842,6 +2843,86 @@ focusMainTrap();
             }
         }
     }, 60000);
+
+ function showTopProductsModal() {
+    var box = document.getElementById('history-box');
+    if (!box) return;
+    
+    // Ha már nyitva van és ez volt az aktív, akkor bezárjuk
+    if (box.style.display === 'block' && box.getAttribute('data-view') === 'top-products') {
+        box.style.display = 'none';
+        return;
+    }
+    box.style.display = 'block';
+    box.setAttribute('data-view', 'top-products');
+
+    if (!Array.isArray(salesHistory) || salesHistory.length === 0) {
+        box.innerHTML = '<p style="color:#666;font-style:italic;margin:0;">Nincsenek rögzített adatok a Top termékek kimutatásához.</p>';
+        return;
+    }
+
+    var productMap = {};
+
+    // Végigmegyünk a teljes előzményen
+    salesHistory.forEach(function(trx) {
+        if (!trx) return;
+        
+        // Szigorú szűrés: kizárjuk a sztornókat, jóváírásokat, napnyitást és napzárást
+        if (trx.sztoronozva || trx.isSztornoJovairas) return;
+        if (trx.paymentType === 'day_open' || trx.paymentType === 'day_close') return;
+        if (!Array.isArray(trx.items) || trx.items.length === 0) return;
+
+        trx.items.forEach(function(item) {
+            // Kulcsként a cikkszámot vagy nevet használjuk az egységesítéshez
+            var key = item.code || item.sku || item.name || 'Ismeretlen';
+            if (!productMap[key]) {
+                productMap[key] = {
+                    name: item.name || 'Ismeretlen termék',
+                    sku: item.sku || item.code || '-',
+                    qty: 0,
+                    revenue: 0
+                };
+            }
+            productMap[key].qty += (parseInt(item.qty, 10) || 1);
+            productMap[key].revenue += (parseFloat(item.totalPrice) || 0);
+        });
+    });
+
+    // Átalakítjuk tömbbé és rendezzük eladott darabszám szerint csökkenőbe
+    var sortedProducts = Object.values(productMap).sort(function(a, b) {
+        return b.qty - a.qty;
+    });
+
+    var html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">' +
+        '<b style="color:#333;font-size:16px;">🏆 Top Eladott Termékek (Teljes Múltbeli Adatsor)</b>' +
+        '<button onclick="showHistoryModal()" style="background:#6c757d; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;">↩️ Vissza az Előzményekhez</button>' +
+        '</div>' +
+        '<div style="background:#e3f2fd; border:1px solid #90caf9; padding:12px; border-radius:6px; margin-bottom:15px; font-size:13px; color:#0d47a1;">' +
+        '<b>ℹ️ Információ:</b> Ez a kimutatás a teljes történelmi adatsorból számol, szigorúan kiszűrve a sztornókat, napkezelési eseményeket és a nem eladási műveleteket.' +
+        '</div>';
+
+    if (sortedProducts.length === 0) {
+        html += '<p style="color:#666;font-style:italic;">Még nincsenek eladási adatok a statisztikához.</p>';
+    } else {
+        html += '<table style="width:100%; border-collapse:collapse; font-size:14px;">' +
+            '<thead><tr style="background:#f1f3f5; text-align:left;"><th style="padding:8px; border-bottom:1px solid #ddd;">Helyezés</th><th style="padding:8px; border-bottom:1px solid #ddd;">Cikkszám</th><th style="padding:8px; border-bottom:1px solid #ddd;">Termék Neve</th><th style="padding:8px; border-bottom:1px solid #ddd;">Eladott Mennyiség</th><th style="padding:8px; border-bottom:1px solid #ddd;">Összes Bevétel</th></tr></thead>' +
+            '<tbody>';
+
+        sortedProducts.forEach(function(prod, index) {
+            var medal = index === 0 ? '🥇 ' : (index === 1 ? '🥈 ' : (index === 2 ? '🥉 ' : (index + 1) + '. '));
+            html += '<tr style="border-bottom:1px solid #eee;">' +
+                '<td style="padding:8px; font-weight:bold;">' + medal + '</td>' +
+                '<td style="padding:8px; color:#555; font-size:12px;">' + prod.sku + '</td>' +
+                '<td style="padding:8px; font-weight:500;">' + prod.name + '</td>' +
+                '<td style="padding:8px; color:#2e7d32; font-weight:bold;">' + prod.qty + ' db</td>' +
+                '<td style="padding:8px; color:#1565c0; font-weight:bold;">' + prod.revenue + ' Ft</td>' +
+                '</tr>';
+        });
+        html += '</tbody></table>';
+    }
+
+    box.innerHTML = html;
+}
 </script>
 </body>
 </html>
