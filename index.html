@@ -1539,18 +1539,30 @@ var eladottNevek = [];
   focusMainTrap();
 }
 
-function sztornoAktivRendeles() {
-    if (!aktivTranzakcio || !Array.isArray(aktivTranzakcio.items) || aktivTranzakcio.items.length === 0) {
-        alert("Nincs aktív vagy nemrég lezárt rendelés a sztornózáshoz!");
+function sztornoTranzakcio(index) {
+    if (!salesHistory || !salesHistory[index]) {
+        alert("A kiválasztott tranzakció nem található!");
         return;
     }
 
-    if (!confirm("Biztosan sztornózod a rendelést? A termékek visszakerülnek a készletbe, a tételek visszatöltődnek a kosárba, és egy negatív jóváírás keletkezik a statisztikában.")) {
+    let tranzakcio = salesHistory[index];
+
+    // Ha ez már eleve egy sztornó jóváírás vagy hivatalos napkezelési esemény
+    if (tranzakcio.isSztornoJovairas || tranzakcio.sztoronozva) {
+        alert("Ez a tranzakció már sztornózva van!");
+        return;
+    }
+    if (!Array.isArray(tranzakcio.items) || tranzakcio.items.length === 0) {
+        alert("Ez az esemény nem tartalmaz eladási tételeket, ezért nem sztornózható!");
+        return;
+    }
+
+    if (!confirm("Biztosan sztornózod ezt a korábbi rendelést? A termékek visszakerülnek a készletbe, és egy negatív jóváírás keletkezik a statisztikában.")) {
         return;
     }
 
     // 1. Termékek visszatöltése a készletbe
-    aktivTranzakcio.items.forEach(tetel => {
+    tranzakcio.items.forEach(tetel => {
         if (tetel.isCsomag && !Array.isArray(tetel.csomagTetelek)) {
             var csomag = csomagok.find(function(cc) { return String(cc.code) === String(tetel.code); });
             if (csomag && Array.isArray(csomag.items)) {
@@ -1578,35 +1590,41 @@ function sztornoAktivRendeles() {
                      most.toLocaleTimeString('hu-HU');
 
     const negativTrx = {
-        date: datumStr,
-        paymentType: aktivTranzakcio.paymentType || 'cash',
-        items: JSON.parse(JSON.stringify(aktivTranzakcio.items)),
-        total: -Math.abs(Number(aktivTranzakcio.vegosszeg || 0)), // Garantáltan negatív érték!
+        date: datumStr + ' (Sztornó: #' + (index + 1) + ')',
+        paymentType: tranzakcio.paymentType || 'cash',
+        items: JSON.parse(JSON.stringify(tranzakcio.items)),
+        total: -Math.abs(Number(tranzakcio.total || tranzakcio.vegosszeg || 0)),
         isSztornoJovairas: true
     };
 
     salesHistory.push(negativTrx);
+    
+    // Megjelöljük az eredeti tranzakciót sztornózottként (így a te eljárásod szerinti property-t használja)
+    tranzakcio.sztoronozva = true;
+
     localStorage.setItem('bolt_history', JSON.stringify(salesHistory));
 
     // 3. Kassza forgalom korrekciója készpénz esetén
     let kasszaData = JSON.parse(localStorage.getItem('bolt_kassza') || '{}');
-    if (aktivTranzakcio.paymentType === 'cash' && kasszaData && kasszaData.forgalom !== undefined) {
-        kasszaData.forgalom = Math.max(0, (kasszaData.forgalom || 0) - Number(aktivTranzakcio.vegosszeg || 0));
+    let osszegToSub = Number(tranzakcio.total || tranzakcio.vegosszeg || 0);
+    if (tranzakcio.paymentType === 'cash' && kasszaData && kasszaData.forgalom !== undefined) {
+        kasszaData.forgalom = Math.max(0, (kasszaData.forgalom || 0) - osszegToSub);
         localStorage.setItem('bolt_kassza', JSON.stringify(kasszaData));
     }
 
-    // 4. Tételek visszatöltése a kosárba és nullázás
-    cart = JSON.parse(JSON.stringify(aktivTranzakcio.items));
-    aktivTranzakcio = { items: [], vegosszeg: 0, paymentType: 'cash' };
-
-    // Ez most már automatikusan felküldi a frissült készletet, history-t és kasszát a felhőbe is!
+    // 4. Mentés és frissítés
     saveData(); 
-    
-    renderCart();
     renderInv();
     if (typeof renderKassza === 'function') renderKassza();
     
-    alert("Sztornó jóváírva! A negatív tétel elmentve, a készlet és a statisztika frissült.");
+    // Előzmény ablak frissítése, hogy azonnal látszódjon a változás
+    var box = document.getElementById('history-box');
+    if (box && box.style.display === 'block') {
+        box.style.display = 'none';
+        showHistoryModal();
+    }
+
+    alert("Siker! A tranzakció sztornózva lett, a készlet és a statisztika frissült.");
 }
 
 function calculateChange() {
@@ -1630,7 +1648,7 @@ function showHistoryModal() {
   box.style.display = 'block';
   
   if (!Array.isArray(salesHistory) || salesHistory.length === 0) {
-    box.innerHTML = '\u003cp style="color:#666;font-style:italic;margin:0;"\u003eNincsenek rögzített értékesítési előzmények.\u003c/p\u003e';
+    box.innerHTML = '<p style="color:#666;font-style:italic;margin:0;">Nincsenek rögzített értékesítési előzmények.</p>';
     return;
   }
 
@@ -1654,18 +1672,18 @@ function showHistoryModal() {
   });
   var grandTotal = totalCashSum + totalCardSum;
 
-  var html = '\u003cdiv style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;"\u003e' +
-    '\u003cb style="color:#333;font-size:16px;"\u003e📊 Előzmény Kimutatás & Pénztár Összesítő\u003c/b\u003e' +
-    '\u003cbutton onclick="exportHistoryExcel()" style="background:#28a745; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px;"\u003e📥 Kimutatás Exportálása Excelbe (.xls)\u003c/button\u003e' +
-    '\u003c/div\u003e' +
-    '\u003cdiv style="background:#e8f5e9; border:1px solid #c8e6c9; padding:12px; border-radius:6px; margin-bottom:15px; font-size:14px;"\u003e' +
-    '\u003cb\u003e💰 Időszaki Pénztári Összesítő (Sztornókkal korrigálva):\u003c/b\u003e\u003cbr\u003e' +
-    '• Készpénzes fizetések: \u003cb\u003e' + cashCount + ' db\u003c/b\u003e tranzakció — Összesen: \u003cb style="color:#2e7d32;"\u003e' + totalCashSum + ' Ft\u003c/b\u003e\u003cbr\u003e' +
-    '• Kártyás fizetések: \u003cb\u003e' + cardCount + ' db\u003c/b\u003e tranzakció — Összesen: \u003cb style="color:#1565c0;"\u003e' + totalCardSum + ' Ft\u003c/b\u003e\u003cbr\u003e' +
-    '• Sztornózott tranzakciók: \u003cb\u003e' + sztornoCount + ' db\u003c/b\u003e — Összesen levonva: \u003cb style="color:#d9534f;"\u003e-' + sztornoSum + ' Ft\u003c/b\u003e\u003cbr\u003e' +
-    '\u003chr style="border:none; border-top:1px solid #c8e6c9; margin:6px 0;"\u003e' +
-    '• \u003cb\u003eNettó Teljes Bevétel (Kassza egyenleg):\u003c/b\u003e \u003cspan style="color:#d32f2f; font-weight:bold; font-size:16px;"\u003e' + grandTotal + ' Ft\u003c/span\u003e' +
-    '\u003c/div\u003e';
+  var html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">' +
+    '<b style="color:#333;font-size:16px;">📊 Előzmény Kimutatás & Pénztár Összesítő</b>' +
+    '<button onclick="exportHistoryExcel()" style="background:#28a745; color:white; border:none; padding:8px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px;">📥 Kimutatás Exportálása Excelbe (.xls)</button>' +
+    '</div>' +
+    '<div style="background:#e8f5e9; border:1px solid #c8e6c9; padding:12px; border-radius:6px; margin-bottom:15px; font-size:14px;">' +
+    '<b>💰 Időszaki Pénztári Összesítő (Sztornókkal korrigálva):</b><br>' +
+    '• Készpénzes fizetések: <b>' + cashCount + ' db</b> tranzakció — Összesen: <b style="color:#2e7d32;">' + totalCashSum + ' Ft</b><br>' +
+    '• Kártyás fizetések: <b>' + cardCount + ' db</b> tranzakció — Összesen: <b style="color:#1565c0;">' + totalCardSum + ' Ft</b><br>' +
+    '• Sztornózott tranzakciók: <b>' + sztornoCount + ' db</b> — Összesen levonva: <b style="color:#d9534f;">-' + sztornoSum + ' Ft</b><br>' +
+    '<hr style="border:none; border-top:1px solid #c8e6c9; margin:6px 0;">' +
+    '• <b>Nettó Teljes Bevétel (Kassza egyenleg):</b> <span style="color:#d32f2f; font-weight:bold; font-size:16px;">' + grandTotal + ' Ft</span>' +
+    '</div>';
 
   salesHistory.slice().reverse().forEach(function(trx, revIdx) {
     var idx = salesHistory.length - 1 - revIdx;
@@ -1688,36 +1706,40 @@ function showHistoryModal() {
     var cardBg = isSztorno ? '#fff0f0' : '#fff';
     var textStyle = isSztorno ? 'text-decoration: line-through; color: #888;' : '';
 
-    html += '\u003cdiv style="background:' + cardBg + ';border:1px solid ' + (isSztorno ? '#f5c6cb' : '#ccc') + ';padding:10px;border-radius:6px;margin-bottom:10px;"\u003e' +
-      '\u003cdiv style="display:flex;justify-content:space-between;background:' + (isSztorno ? '#f8d7da' : '#eee') + ';padding:6px;border-radius:4px;font-weight:bold;margin-bottom:6px;"\u003e' +
-      '\u003cspan\u003e#' + (idx+1) + ' Esemény — ' + (trx.date || 'Ismeretlen idő') + ' (\u003cspan style="color:' + payColor + ';"\u003e' + payLabel + '\u003c/span\u003e)\u003c/span\u003e' +
-      (trx.paymentType === 'day_open' || trx.paymentType === 'day_close' ? '' : '\u003cspan style="color:' + (isSztorno ? '#dc3545' : '#1877f2') + '; ' + textStyle + '"\u003eÖsszesen: ' + (trx.total || 0) + ' Ft\u003c/span\u003e') +
-      '\u003c/div\u003e';
+    html += '<div style="background:' + cardBg + ';border:1px solid ' + (isSztorno ? '#f5c6cb' : '#ccc') + ';padding:10px;border-radius:6px;margin-bottom:10px;">' +
+      '<div style="display:flex;justify-content:space-between;background:' + (isSztorno ? '#f8d7da' : '#eee') + ';padding:6px;border-radius:4px;font-weight:bold;margin-bottom:6px;align-items:center;flex-wrap:wrap;gap:5px;">' +
+      '<span>#' + (idx+1) + ' Esemény — ' + (trx.date || 'Ismeretlen idő') + ' (<span style="color:' + payColor + ';">' + payLabel + '</span>)</span>' +
+      '<div style="display:flex; align-items:center; gap:10px;">' +
+      (trx.paymentType === 'day_open' || trx.paymentType === 'day_close' ? '' : '<span style="color:' + (isSztorno ? '#dc3545' : '#1877f2') + '; ' + textStyle + '">Összesen: ' + (trx.total || 0) + ' Ft</span>') +
+      (!isSztorno && trx.paymentType !== 'day_open' && trx.paymentType !== 'day_close' && !trx.isSztornoJovairas ? 
+        '<button onclick="sztornoTranzakcio(' + idx + ')" style="background:#d9534f; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold;">Tranzakció Sztornózása</button>' : '') +
+      '</div>' +
+      '</div>';
 
     if (trx.paymentType === 'day_open' || trx.paymentType === 'day_close') {
-      html += '\u003cp style="margin:5px 0; font-style:italic; color:#666;"\u003eHivatalos napkezelési esemény.\u003c/p\u003e';
+      html += '<p style="margin:5px 0; font-style:italic; color:#666;">Hivatalos napkezelési esemény.</p>';
     } else if (Array.isArray(trx.items)) {
-      html += '\u003ctable style="' + textStyle + '"\u003e' +
-        '\u003cthead\u003e\u003ctr\u003e\u003cth\u003eCikkszám / Vonalkód\u003c/th\u003e\u003cth\u003eTermék Neve\u003c/th\u003e\u003cth\u003eEgységár\u003c/th\u003e\u003cth\u003eDb\u003c/th\u003e\u003cth\u003eÖsszesen\u003c/th\u003e\u003c/tr\u003e\u003c/thead\u003e' +
-        '\u003ctbody\u003e';
+      html += '<table style="' + textStyle + '">' +
+        '<thead><tr><th>Cikkszám / Vonalkód</th><th>Termék Neve</th><th>Egységár</th><th>Db</th><th>Összesen</th></tr></thead>' +
+        '<tbody>';
       
       trx.items.forEach(function(it) {
         var codeVal = (it.code && it.code !== '-') ? it.code : (it.sku && it.sku !== '-' ? it.sku : '');
-        html += '\u003ctr style="cursor:pointer;" title="Kattints ide a szerkesztéshez az Új Áru fülön!" onclick="loadProductIntoAddForm(\'' + (it.code || it.sku || '') + '\')"\u003e' +
-          '\u003ctd\u003e' +
-            '\u003cdiv style="font-size:11px;color:#555;margin-bottom:2px;"\u003e\u003cb\u003eCikkszám:\u003c/b\u003e ' + (it.sku || '-') + '\u003c/div\u003e' +
-            (codeVal ? '\u003csvg class="hist-barcode-svg" data-code="' + codeVal + '"\u003e\u003c/svg\u003e' : '\u003cspan\u003e-\u003c/span\u003e') +
-          '\u003c/td\u003e' +
-          '\u003ctd\u003e' + (it.name || 'Ismeretlen termék') + '\u003c/td\u003e' +
-          '\u003ctd\u003e' + (it.finalUnitPrice || 0) + ' Ft\u003c/td\u003e' +
-          '\u003ctd\u003e' + (it.qty || 1) + ' db\u003c/td\u003e' +
-          '\u003ctd\u003e\u003cb\u003e' + (it.totalPrice || 0) + ' Ft\u003c/b\u003e\u003c/td\u003e' +
-          '\u003c/tr\u003e';
+        html += '<tr style="cursor:pointer;" title="Kattints ide a szerkesztéshez az Új Áru fülön!" onclick="loadProductIntoAddForm(\'' + (it.code || it.sku || '') + '\')">' +
+          '<td>' +
+            '<div style="font-size:11px;color:#555;margin-bottom:2px;"><b>Cikkszám:</b> ' + (it.sku || '-') + '</div>' +
+            (codeVal ? '<svg class="hist-barcode-svg" data-code="' + codeVal + '"></svg>' : '<span>-</span>') +
+          '</td>' +
+          '<td>' + (it.name || 'Ismeretlen termék') + '</td>' +
+          '<td>' + (it.finalUnitPrice || 0) + ' Ft</td>' +
+          '<td>' + (it.qty || 1) + ' db</td>' +
+          '<td><b>' + (it.totalPrice || 0) + ' Ft</b></td>' +
+          '</tr>';
       });
-      html += '\u003c/tbody\u003e\u003c/table\u003e';
+      html += '</tbody></table>';
     }
 
-    html += '\u003c/div\u003e';
+    html += '</div>';
   });
 
   box.innerHTML = html;
@@ -1731,7 +1753,7 @@ function showHistoryModal() {
     });
   }, 50);
 }
-
+ 
 function clearHistoryData() {
   if (confirm("Biztosan törlöd az összes értékesítési előzményt?")) {
     salesHistory = [];
