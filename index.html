@@ -2784,26 +2784,30 @@ focusMainTrap();
 </script>
 
 <script>
-    // --- AUTOMATIKUS 18:00 ÓRÁS NAPI ZÁRÁS ÉS MENTÉS ---
+    // --- AUTOMATIKUS 18:00 ÓRÁS MENTÉS (Két JSON fájl) ---
     function automatikusNapiZarasMentes() {
         const datum = new Date().toISOString().split('T')[0];
         
-        // 1. Teljes biztonsági mentés (.json)
-        if (typeof exportJSON === 'function') {
-            exportJSON();
+        // 1. Mentés Fájlba (.json) - exportData()
+        if (typeof exportData === 'function') {
+            exportData();
         }
 
-        // 2. Teljes Kimutatás / Excel (4 munkalap)
-        if (typeof exportTeljesExcel === 'function') {
-            exportTeljesExcel();
-        }
+        // 2. Teljes Biztonsági Mentés (.json) - exportJSON() 1 mp csúsztatással
+        setTimeout(() => {
+            if (typeof exportJSON === 'function') {
+                exportJSON();
+            }
+        }, 1000); // 1 másodperc várakozás a két fájl között
 
-        console.log(`Automatikus napi zárás, JSON és Excel kimutatás lefutott: ${datum}`);
+        console.log(`Automatikus mentések sikeresen lefutottak: ${datum}`);
     }
 
     // Időzítő: percenként ellenőrzi, hogy pontosan 18:00 óra van-e
     setInterval(() => {
         const now = new Date();
+        
+        // TESZTELSZ? Ha igen, írd át ideiglenesen a saját óraállásod perceit (pl. 18 és a te perced)
         if (now.getHours() === 18 && now.getMinutes() === 0) {
             const utolsoMentes = localStorage.getItem('radnotinta_utolso_auto_zaras');
             const maiNap = now.toISOString().split('T')[0];
