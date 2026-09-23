@@ -325,6 +325,7 @@ function rajzol(){
   if(adatok.length === 0){
     tabla.innerHTML = '<tr><td class="info">Még nincsenek eladási adatok. Készíts egy fizetést a bolt-appban!</td></tr>';
     return;
+   hoTerkepRajzol();
   }
 
   const sor = csoportosit(mod);
@@ -507,7 +508,6 @@ function hoTerkepRajzol(){
     Math.round(csOssz/teljes*100) + '% az összes órás forgalomból).';
 }
 
-hoTerkepRajzol();
 automatikusMentes();
 rajzol();
 betoltesFelhobol();
