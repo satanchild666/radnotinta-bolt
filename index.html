@@ -1044,7 +1044,25 @@ function handleBulkImages(e) {
     reader.readAsDataURL(file);
   });
 }
-
+function getReservedQty(product) {
+    if (!Array.isArray(friendsOrders) || friendsOrders.length === 0) return 0;
+    let reserved = 0;
+    friendsOrders.forEach(friend => {
+        if (!friend || !Array.isArray(friend.items)) return;
+        friend.items.forEach(item => {
+            if (
+                (item.code && product.code && String(item.code) === String(product.code)) ||
+                (item.sku && product.sku && String(item.sku) === String(product.sku)) ||
+                (item.code && product.sku && String(item.code) === String(product.sku)) ||
+                (item.sku && product.code && String(item.sku) === String(product.code))
+            ) {
+                reserved += (parseInt(item.qty, 10) || 1);
+            }
+        });
+    });
+    return reserved;
+}
+ 
 function renderInv() {
   var tbody = document.getElementById('inv-table');
   if (!tbody) return;
@@ -1084,7 +1102,7 @@ function renderInv() {
       '<td>' + (x.code || '-') + '</td>' +
       '<td>' + (x.name || '') + '</td>' +
       '<td>' + priceDisplay + '</td>' +
-      '<td>' + (x.stock || 0) + ' db</td>' +
+      '<td>' + (x.stock || 0) + ' db' + (getReservedQty(x) > 0 ? ' (' + getReservedQty(x) + ' db)' : '') + '</td>' +
       '<td>' + gombok + '</td>';
     tbody.appendChild(tr);
   });
