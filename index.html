@@ -44,6 +44,23 @@
     #print-area, #print-area * { visibility: visible; }
     #print-area { position: absolute; left: 0; top: 0; width: 100%; background: #fff !important; display: block !important; }
   }
+
+  .reserved-badge {
+    display: inline-block;
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffc107;
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 0.8em;
+    margin-top: 4px;
+    white-space: nowrap;
+  }
+
+  .reserved-badge.critical {
+    background: #f8d7da24;
+    border-color: #dc3545;
+  }
 </style>
 </head>
 <body>
@@ -1102,7 +1119,7 @@ function renderInv() {
       '<td>' + (x.code || '-') + '</td>' +
       '<td>' + (x.name || '') + '</td>' +
       '<td>' + priceDisplay + '</td>' +
-      '<td>' + (x.stock || 0) + ' db' + (getReservedQty(x) > 0 ? ' (' + getReservedQty(x) + ' db)' : '') + '</td>' +
+      '<td>' + (x.stock || 0) + ' db' + (getReservedQty(x) > 0 ? ' <span class="reserved-badge">🔒 ' + getReservedQty(x) + ' foglalt</span>' : '') + '</td>' +
       '<td>' + gombok + '</td>';
     tbody.appendChild(tr);
   });
