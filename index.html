@@ -61,6 +61,19 @@
     background: #f8d7da24;
     border-color: #dc3545;
   }
+ 
+   .reserved-popup {
+    position: absolute;
+    z-index: 999;
+    background: #1d3557;
+    color: #fff;
+    padding: 14px 18px;
+    border-radius: 12px;
+    font-size: 18px;
+    line-height: 1.6;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+    max-width: 320px;
+  }
 </style>
 </head>
 <body>
@@ -1101,6 +1114,24 @@ function getReservedBy(product) {
     return parts.join(', ');
 }
  
+function showReservedInfo(el, names) {
+    var already = document.getElementById('reserved-popup');
+    if (already) already.remove();
+    var popup = document.createElement('div');
+    popup.id = 'reserved-popup';
+    popup.className = 'reserved-popup';
+    popup.innerHTML = '<b>Ki foglalta:</b><br>' + names + '<br><small>(bezárás: kattints máshova)</small>';
+    document.body.appendChild(popup);
+    var rect = el.getBoundingClientRect();
+    popup.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+    popup.style.left = Math.max(10, rect.left + window.scrollX - 50) + 'px';
+    setTimeout(function() {
+        document.addEventListener('click', function closePopup(e) {
+            if (!popup.contains(e.target) && e.target !== el) { popup.remove(); document.removeEventListener('click', closePopup); }
+        });
+    }, 10);
+}
+
 function renderInv() {
   var tbody = document.getElementById('inv-table');
   if (!tbody) return;
@@ -1140,7 +1171,7 @@ function renderInv() {
       '<td>' + (x.code || '-') + '</td>' +
       '<td>' + (x.name || '') + '</td>' +
       '<td>' + priceDisplay + '</td>' +
-      '<td>' + (x.stock || 0) + ' db' + (getReservedQty(x) > 0 ? ' <span class="reserved-badge" title="' + getReservedBy(x) + '">🔒 ' + getReservedQty(x) + ' foglalt</span>' : '') + '</td>' +
+      '<td>' + (x.stock || 0) + ' db' + (getReservedQty(x) > 0 ? ' <span class="reserved-badge" onclick="showReservedInfo(this, \'' + getReservedBy(x).replace(/'/g, "\\'") + '\')">🔒 ' + getReservedQty(x) + ' foglalt</span>' : '') + '</td>' +
       '<td>' + gombok + '</td>';
     tbody.appendChild(tr);
   });
