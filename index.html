@@ -1080,6 +1080,27 @@ function getReservedQty(product) {
     return reserved;
 }
  
+function getReservedBy(product) {
+    if (!Array.isArray(friendsOrders) || friendsOrders.length === 0) return '';
+    let parts = [];
+    friendsOrders.forEach(friend => {
+        if (!friend || !Array.isArray(friend.items)) return;
+        let friendQty = 0;
+        friend.items.forEach(item => {
+            if (
+                (item.code && product.code && String(item.code) === String(product.code)) ||
+                (item.sku && product.sku && String(item.sku) === String(product.sku)) ||
+                (item.code && product.sku && String(item.code) === String(product.sku)) ||
+                (item.sku && product.code && String(item.sku) === String(product.code))
+            ) {
+                friendQty += (parseInt(item.qty, 10) || 1);
+            }
+        });
+        if (friendQty > 0) parts.push(friend.name + ': ' + friendQty + ' db');
+    });
+    return parts.join(', ');
+}
+ 
 function renderInv() {
   var tbody = document.getElementById('inv-table');
   if (!tbody) return;
@@ -1119,7 +1140,7 @@ function renderInv() {
       '<td>' + (x.code || '-') + '</td>' +
       '<td>' + (x.name || '') + '</td>' +
       '<td>' + priceDisplay + '</td>' +
-      '<td>' + (x.stock || 0) + ' db' + (getReservedQty(x) > 0 ? ' <span class="reserved-badge">🔒 ' + getReservedQty(x) + ' foglalt</span>' : '') + '</td>' +
+      '<td>' + (x.stock || 0) + ' db' + (getReservedQty(x) > 0 ? ' <span class="reserved-badge" title="' + getReservedBy(x) + '">🔒 ' + getReservedQty(x) + ' foglalt</span>' : '') + '</td>' +
       '<td>' + gombok + '</td>';
     tbody.appendChild(tr);
   });
