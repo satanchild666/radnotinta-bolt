@@ -133,6 +133,20 @@
   .btn-riport:hover { transform:translateY(-2px); box-shadow:0 8px 20px rgba(16,185,129,.5); }
 
   .info { text-align:center; color:rgba(232,228,243,.4); font-style:italic; padding:24px; }
+
+ .ho-racs { display:flex; gap:3px; align-items:flex-end; height:240px;
+  padding:14px 10px 6px; background:rgba(255,255,255,.04); border-radius:12px; }
+.ho-oszlop { flex:1; display:flex; flex-direction:column; justify-content:flex-end;
+  align-items:center; height:100%; min-width:0; }
+.ho-sav { width:100%; border-radius:5px 5px 0 0; cursor:pointer; transition:filter .15s ease; }
+.ho-sav:hover { filter:brightness(1.35); }
+.ho-ures { width:100%; height:4px; background:rgba(255,255,255,.08); border-radius:4px; }
+.ho-cimke { font-size:9px; color:rgba(232,228,243,.45); margin-top:5px; }
+.ho-jelmagy { display:flex; align-items:center; gap:8px; margin-top:12px;
+  font-size:9pt; color:rgba(232,228,243,.5); }
+.ho-jelmagy .savcsik { width:120px; height:10px; border-radius:5px;
+  background:linear-gradient(90deg,hsl(45,90%,72%),hsl(5,90%,47%)); }
+
 </style>
 </head>
 <body>
@@ -156,6 +170,12 @@
     <button id="btnHavi" onclick="nezo('havi')">Havi</button>
   </div>
   <canvas id="grafikon" height="120"></canvas>
+</div>
+
+ <div class="panel">
+  <h2><span class="ikon">🔥</span> Napszaki forgalom — melyik órában vásárolnak?</h2>
+  <div id="hoTartalom"></div>
+  <div class="ho-osszefoglal" id="hoOsszefoglal"></div>
 </div>
 
 <div class="panel">
@@ -191,38 +211,61 @@ const RovidHonapok = ['jan.','febr.','márc.','ápr.','máj.','jún.',
 
 function huDatumParse(str){
   if(!str) return null;
-  let m = str.match(/^(\d{4})\.\s*(\S+)\s*(\d{1,2})/);
+  // Új formátum: "2026. 09. 19. 17:57:01" (vagy idő nélkül: "2026. 09. 19.")
+  let m = str.match(/^(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(?:(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
   if(m){
-    let honapIdx = HONAPOK.indexOf(m[2]);
-    if(honapIdx === -1) honapIdx = RovidHonapok.indexOf(m[2]);
-    if(honapIdx === -1) honapIdx = parseInt(m[2],10) - 1;
-    if(honapIdx >= 0 && honapIdx < 12){
-      return new Date(parseInt(m[1],10), honapIdx, parseInt(m[3],10));
-    }
+    const ho = parseInt(m[2],10)-1, nap = parseInt(m[3],10);
+    const ora = m[4] ? parseInt(m[4],10) : null;
+    const perc = m[5] ? parseInt(m[5],10) : null;
+    return { datum: new Date(parseInt(m[1],10), ho, nap),
+             ora: ora, perc: perc, vanOra: ora !== null };
   }
-  let d = new Date(str);
-  return isNaN(d.getTime()) ? null : d;
+  // Régi formátum: "2026. szeptember 19."
+  m = str.match(/^(\d{4})\.\s*(\S+)\s*(\d{1,2})/);
+  if(m){
+    let ho = HONAPOK.indexOf(m[2]);
+    if(ho === -1) ho = RovidHonapok.indexOf(m[2]);
+    if(ho === -1) ho = parseInt(m[2],10) - 1;
+    if(ho >= 0 && ho < 12)
+      return { datum: new Date(parseInt(m[1],10), ho, parseInt(m[3],10)),
+               ora: null, perc: null, vanOra: false };
+  }
+  const d = new Date(str);
+  if(!isNaN(d.getTime()))
+    return { datum: d, ora: d.getHours(), perc: d.getMinutes(), vanOra: true };
+  return null;
 }
 
 function adatokFeldolgozasa(nyers){
-  let eredmeny = [];
+  let eredmeny = [], orankent = {};
   if(Array.isArray(nyers)){
     nyers.forEach(function(trx){
       if(!trx) return;
       if(trx.paymentType !== 'cash' && trx.paymentType !== 'card') return;
-      let d = huDatumParse(trx.date);
-      if(!d) return;
-      let kulcs = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-      let mezo = (trx.paymentType === 'card') ? 'kartya' : 'kp';
+      const p = huDatumParse(trx.date);
+      if(!p) return;
+      const d = p.datum;
+      const kulcs = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      const mezo = (trx.paymentType === 'card') ? 'kartya' : 'kp';
+      const osszeg = trx.total || 0;
+
       let meglevo = eredmeny.find(x => x.datum === kulcs);
-      if(meglevo){ meglevo[mezo] += (trx.total || 0); }
-      else { eredmeny.push({datum: kulcs, kp: 0, kartya: 0, [mezo]: (trx.total || 0)}); }
+      if(meglevo){ meglevo[mezo] += osszeg; }
+      else { eredmeny.push({datum: kulcs, kp: 0, kartya: 0, [mezo]: osszeg}); }
+
+      // ÓRÁS ADAT (csak ha van időpont)
+      if(p.vanOra){
+        if(!orankent[p.ora]) orankent[p.ora] = {ossz: 0, db: 0};
+        orankent[p.ora].ossz += osszeg;
+        orankent[p.ora].db++;
+      }
     });
   }
   eredmeny.sort(function(a,b){ return a.datum < b.datum ? -1 : 1; });
-  return eredmeny;
+  return { napi: eredmeny, orankent: orankent };
 }
 
+let oraAdatok = {};
 let adatok = [];
 let mod = 'napi', grafikon = null;
 
@@ -356,7 +399,9 @@ function betoltesFelhobol(){
   firestoreDB.collection("bolt").doc("adatok").get().then(function(doc){
     if(doc.exists){
       let history = doc.data().salesHistory || [];
-      adatok = adatokFeldolgozasa(history);
+      let feld = adatokFeldolgozasa(history);
+adatok = feld.napi;
+oraAdatok = feld.orankent;
       rajzol();
       let el = document.getElementById('szinkronAllapot');
       el.textContent = '● Élő kapcsolat — ' + history.length + ' tranzakció a felhőben';
@@ -370,7 +415,9 @@ function betoltesFelhobol(){
   firestoreDB.collection("bolt").doc("adatok").onSnapshot(function(doc){
     if(doc.exists){
       let history = doc.data().salesHistory || [];
-      adatok = adatokFeldolgozasa(history);
+      let feld = adatokFeldolgozasa(history);
+adatok = feld.napi;
+oraAdatok = feld.orankent;
       rajzol();
       let el = document.getElementById('szinkronAllapot');
       el.textContent = '● Élő kapcsolat — ' + history.length + ' tranzakció a felhőben (frissítve)';
@@ -415,6 +462,50 @@ function automatikusMentes(){
   }
 }
 
+function hoTerkepRajzol(){
+  const tarolo = document.getElementById('hoTartalom');
+  const osszef = document.getElementById('hoOsszefoglal');
+  const orak = Object.keys(oraAdatok).map(Number).sort((a,b)=>a-b);
+
+  if(orak.length === 0){
+    tarolo.innerHTML = '<div class="info">Nincs órás időpont a tranzakciókban (még csak idő nélküli adatok vannak).</div>';
+    osszef.innerHTML = '';
+    return;
+  }
+
+  const maxOssz = Math.max(...orak.map(o => oraAdatok[o].ossz));
+  let html = '<div class="ho-racs">';
+  for(let h = 0; h < 24; h++){
+    const ad = oraAdatok[h];
+    const arany = ad ? ad.ossz / maxOssz : 0;
+    // alacsony → sárga (hsl 45), magas → piros (hsl 5)
+    const hue = 45 - (40 * arany);
+    const world = 30 + (35 * arany);
+    html += '<div class="ho-oszlop">';
+    if(ad && ad.ossz > 0){
+      html += '<div class="ho-sav" title="' + h + ':00 — ' + fmt(ad.ossz) +
+              ' (' + ad.db + ' db)" style="height:' + Math.max(6, arany*100) +
+              '%;background:hsl(' + hue + ',' + world + '%,' + (72 - 25*arany) + '%)"></div>';
+    } else {
+      html += '<div class="ho-ures" title="' + h + ':00 — nincs forgalom"></div>';
+    }
+    html += '<div class="ho-cimke">' + (h % 3 === 0 ? h + 'h' : '') + '</div></div>';
+  }
+  html += '</div><div class="ho-jelmagy"><span>kevés</span>' +
+          '<div class="savcsik"></div><span>sok</span></div>';
+  tarolo.innerHTML = html;
+
+  // csúcsóra kiemelése
+  let csucs = orak[0];
+  orak.forEach(o => { if(oraAdatok[o].ossz > oraAdatok[csucs].ossz) csucs = o; });
+  const csOssz = oraAdatok[csucs].ossz;
+  const teljes = orak.reduce((s,o)=>s+oraAdatok[o].ossz, 0);
+  osszef.innerHTML = '🔥 <b>Legforgalmasabb sáv: ' + csucs + ':00–' + (csucs+1) +
+    ':00</b> — ' + fmt(csOssz) + ' forgalom (' +
+    Math.round(csOssz/teljes*100) + '% az összes órás forgalomból).';
+}
+
+hoTerkepRajzol();
 automatikusMentes();
 rajzol();
 betoltesFelhobol();
