@@ -429,7 +429,9 @@ oraAdatok = feld.orankent;
 try {
   let helyi = JSON.parse(localStorage.getItem('bolt_history'));
   if(adatok.length === 0){
-    adatok = adatokFeldolgozasa(helyi);
+    let feld = adatokFeldolgozasa(history);
+adatok = feld.napi;
+oraAdatok = feld.orankent;
     rajzol();
   }
 } catch(e){}
