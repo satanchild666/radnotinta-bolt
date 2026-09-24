@@ -834,6 +834,11 @@ function processInvoiceText() {
   let lines = rawText.split('\n').map(function(l){ return l.replace(/\s+/g, ' ').trim(); }).filter(function(l){ return l.length > 0; });
   let updatedCount = 0, addedCount = 0;
 
+   var befogadasMod = 'update';
+  if (confirm('Szállítólevél feldolgozása:\n\nOK = HOZZÁADÁS (készlet és ár frissítése)\nMégse = CSAK FRISSÍTÉS (ár és készlet marad, csak beszerzési ár kerül be)')) {
+    befogadasMod = 'add';
+  }
+
   let isVectraline = lines.some(function(l){ return /^EAN:\s*\d+$/.test(l); });
 
   const junkRe = /^(Eladó|Vevő|Szállító|Száll|Oldal|Elektronikus|Fizetési|Számla|Rendelés|Cikkszám|Vonalkód|Összesített|Nettó|Engedménnyel|Áfa|ÁFA|Fizetendő|azaz|A számla|Készült|Adószám|Adóigazgatási|Bank|Tel|Fax|Email|Web|Késedelmes|Kocsi|Szedő|Revizor|Megrend|Import|A csomagolás|A kiterjesztett|A jelenlegi|A 2026|Eddigi|Köszönjük|Aktuális|Megjegyzés|Számlázó|Az áru|Ügyintéző|Cégjegyzékszám|Telefon|Bankszámla|szállítási)/i;
@@ -846,11 +851,13 @@ function processInvoiceText() {
     let existing = db.find(function(p){
       return (ean && String(p.code).trim() === ean) || (sku && p.sku && String(p.sku).trim() === sku);
     });
-    if (existing) {
-      if (ean) existing.code = ean;
-      if (sku) existing.sku = sku;
-      existing.stock = (parseInt(existing.stock, 10) || 0) + qty;
-      existing.price = kiskerar;
+        if (existing) {
+      if (befogadasMod === 'add') {
+        if (ean) existing.code = ean;
+        if (sku) existing.sku = sku;
+        existing.stock = (parseInt(existing.stock, 10) || 0) + qty;
+        existing.price = kiskerar;
+      }
       existing.bekter = bekter;
       updatedCount++;
     } else {
@@ -964,7 +971,8 @@ function processInvoiceText() {
   renderInv();
   textareaEl.value = '';
   document.getElementById('pdf-status').innerText = '';
-  alert('Bevételezés kész! Új termékek: ' + addedCount + ' db. Készlet bővítve: ' + updatedCount + ' db. Ár = nettó x ' + INVOICE_MARKUP + '. Ellenőrizd a Készlet fülön!');
+ var modSzoveg = (befogadasMod === 'add') ? 'HOZZÁADÁS mód: készlet és árak frissítve.' : 'CSAK FRISSÍTÉS mód: árak és készlet érintetlen, csak beszerzési ár rögzült.';
+alert('Bevételezés kész (' + modSzoveg + ')\n\nÚj termékek: ' + addedCount + ' db\nÉrintett meglévő termékek: ' + updatedCount + ' db\n\nEllenőrizd a Készlet fülön!');
 }
 
 let excelImportMod = null; // Excel import mód ('feluliras' / 'hozzaadas')
@@ -1187,9 +1195,13 @@ function renderInv() {
       var haszonSzin = haszonPct >= 60 ? 'green' : (haszonPct >= 30 ? 'orange' : 'red');
       bekDisplay = bek + ' Ft';
       haszonDisplay = '<b style="color:' + haszonSzin + ';">' + haszon + ' Ft (+' + haszonPct + '%)</b>';
+   
     } else {
-      bekDisplay = '<span style="color:#aaa;">–</span>';
-      haszonDisplay = '<span style="color:#aaa;font-size:11px;">nincs adat</span>';
+      var becsBek = Math.round(itemPrice / 1.6);
+      var becsHaszon = itemPrice - becsBek;
+      var becsPct = becsBek > 0 ? Math.round((becsHaszon / becsBek) * 100) : 0;
+      bekDisplay = '<span style="color:#888;">~' + becsBek + ' Ft</span><br><span style="color:#aaa;font-size:10px;">becsült</span>';
+      haszonDisplay = '<b style="color:' + (becsPct >= 60 ? 'green' : (becsPct >= 30 ? 'orange' : 'red')) + ';">~' + becsHaszon + ' Ft (+' + becsPct + '%)</b><br><span style="color:#aaa;font-size:10px;">becsült</span>';
     }
 
     var sorStilus = isLow ? 'background:#f2dede;color:#a94442;font-weight:bold;' : '';
