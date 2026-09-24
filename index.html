@@ -1207,7 +1207,7 @@ function renderInv() {
       '<td>' + (x.code || '-') + '</td>' +
       '<td>' + (x.name || '') + '</td>' +
       '<td>' + priceDisplay + '</td>' +
-      '<td style="font-size:14px;">' + bekHaszonDisplay + '</td>' +
+      '<td style="font-size:14px;white-space:nowrap;">' + bekHaszonDisplay + '</td>' +
       '<td>' + (x.stock || 0) + ' db' + (getReservedQty(x) > 0 ? ' <span class="reserved-badge" onclick="showReservedInfo(this, \'' + getReservedBy(x).replace(/'/g, "\\'") + '\')">🔒 ' + getReservedQty(x) + ' foglalt</span>' : '') + (function(){ var f = getFreeQty(x); if (f < 0) return ' <span class="free-short">⚠️ ' + f + ' hiány</span>'; if ((parseInt(x.stock, 10) || 0) === 0) return ' <span class="free-none">🚫 nincs raktáron</span>'; return ' <span class="free-ok">✅ ' + f + ' szabad</span>'; })() + '</td>' +
       '<td>' + gombok + '</td>';
     tbody.appendChild(tr);
