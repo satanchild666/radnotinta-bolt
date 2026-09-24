@@ -165,7 +165,7 @@
 <div class="panel" id="nyeresegPanel">
   <h2><span class="ikon">💰</span> Nyereség-áttekintés (készlet)</h2>
   <div class="kartyak" style="margin-bottom:18px">
-    <div class="kartya kp"><div class="cimke">📦 Készlet értéke (bekerülés)</div><div class="ertek" id="npKeszletErtek">–</div></div>
+    <div class="kartya kp"><div class="cimke">📦 Készlet bekerülési értéke</div><div class="ertek" id="npKeszletErtek">–</div></div>
     <div class="kartya kartyas"><div class="cimke">🏷️ Várható eladási érték</div><div class="ertek" id="npEladasiErtek">–</div></div>
     <div class="kartya arany-k"><div class="cimke">⚡ Várható haszon</div><div class="ertek" id="npHaszon">–</div></div>
   </div>
@@ -408,58 +408,66 @@ function rajzol(){
  nyeresegSzamol();
 }
  
+ function fmt(szam){
+  return new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 0 }).format(Math.round(szam)) + ' Ft';
+}
+ 
  function nyeresegSzamol(){
-  let db = {};
-  try { db = JSON.parse(localStorage.getItem('bolt_db')) || {}; }
+  let db = [];
+  try { db = JSON.parse(localStorage.getItem('bolt_db')) || []; }
   catch(e){ return; }
+  if(!Array.isArray(db)) return;
 
-  let bekerOssz = 0, eladOssz = 0, zold = 0, narancs = 0, piros = 0;
+  let bekerOssz = 0, eladOssz = 0, zold = 0, narancs = 0, piros = 0, becsult = 0;
   const sorok = [];
 
-  Object.keys(db).forEach(function(id){
-    const x = db[id];
-    const keszlet = Number(x.keszlet) || 0;
+  db.forEach(function(x){
+    const keszlet = parseInt(x.stock, 10) || 0;
     if(keszlet <= 0) return;
-    // bekerülési ár: lehet "~950" formátum is → kiszedjük a nem-szám jeleket
-    const bekter = parseFloat(String(x.bekter || '').replace('~','').replace(/[^\d.,]/g,'').replace(',','.')) || 0;
-    const ar = parseFloat(String(x.ar || '').replace(/[^\d.,]/g,'').replace(',','.')) || 0;
 
-    const bekErtek = bekter * keszlet;
-    const eladErtek = ar * keszlet;
-    const haszon = eladErtek - bekErtek;
+    const eladAr = parseFloat(x.discountPrice) > 0 ? parseFloat(x.discountPrice) : parseFloat(x.price) || 0;
+    let bekAr = parseFloat(x.bekter);
+    const vanBekter = !isNaN(bekAr) && bekAr > 0;
+    if(!vanBekter){ bekAr = Math.round(eladAr / 1.6); becsult++; } // ⚠️ becslés: ár / 1,6
+
+    const bekErtek  = bekAr * keszlet;
+    const eladErtek = eladAr * keszlet;
+    const haszon    = eladErtek - bekErtek;
 
     bekerOssz += bekErtek;
-    eladOssz += eladErtek;
+    eladOssz  += eladErtek;
 
-    // zöld / narancs / piros a haszonhozside szerint
-    const haszonPerc = bekErtek > 0 ? haszon / bekErtek : 1;
-    if(haszonPerc >= 0.3) zold++;
-    else if(haszonPerc >= 0.1) narancs++;
+    const szazalek = bekErtek > 0 ? haszon / bekErtek : 1;
+    if(szazalek >= 0.3) zold++;
+    else if(szazalek >= 0.1) narancs++;
     else piros++;
 
-    sorok.push({nev: x.nev || x.name || id, keszlet, bekter, ar, bekErtek, eladErtek, haszon, haszonPerc});
+    sorok.push({ nev: x.name || x.sku || '-', keszlet, bekErtek, eladErtek, haszon, szazalek, becsult: !vanBekter });
   });
 
-  sorok.sort(function(a,b){ return a.haszonPerc - b.haszonPerc; }); // legrosszabb elöl
+  sorok.sort(function(a,b){ return a.szazalek - b.szazalek; });
 
   document.getElementById('npKeszletErtek').textContent = fmt(bekerOssz);
   document.getElementById('npEladasiErtek').textContent = fmt(eladOssz);
   document.getElementById('npHaszon').textContent = fmt(eladOssz - bekerOssz);
 
-  let html = '<thead><tr><th>Tétel</th><th>Készlet</th><th>Bekerülés</th><th>Ár</th><th>Haszon</th><th>%</th></tr></thead><tbody>';
+  let html = '<thead><tr><th>Tétel</th><th>Készlet</th><th>Bekerülés értéke</th><th>Eladási érték</th><th>Haszon</th><th>%</th></tr></thead><tbody>';
   sorok.forEach(function(s){
-    const szin = s.haszonPerc >= 0.3 ? '#34d399' : (s.haszonPerc >= 0.1 ? '#fbbf24' : '#f87171');
-    html += '<tr><td>' + s.nev + '</td><td>' + s.keszlet + '</td><td>' + fmt(s.bekErtek) +
-            '</td><td>' + fmt(s.eladErtek) + '</td><td style="color:' + szin + '">' + fmt(s.haszon) +
-            '</td><td style="color:' + szin + '">' + Math.round(s.haszonPerc*100) + '%</td></tr>';
+    const szin = s.szazalek >= 0.3 ? '#34d399' : (s.szazalek >= 0.1 ? '#fbbf24' : '#f87171');
+    html += '<tr><td>' + s.nev + (s.becsult ? ' <span title="Bekerülés becsült (ár/1,6)">⚠️</span>' : '') +
+            '</td><td>' + s.keszlet + '</td><td>' + fmt(s.bekErtek) + '</td><td>' + fmt(s.eladErtek) +
+            '</td><td style="color:' + szin + '">' + fmt(s.haszon) +
+            '</td><td style="color:' + szin + '">' + Math.round(s.szazalek * 100) + '%</td></tr>';
   });
   html += '</tbody>';
   document.getElementById('npTabla').innerHTML = html;
 
   document.getElementById('npOsszefoglal').innerHTML =
-    '🟢 ' + zold + ' jó tétel · 🟠 ' + narancs + ' közepes · 🔴 ' + piros +
-    ' gyenge (a haszon mértéke szerint, készletre vetítve)';
+    '🟢 ' + zold + ' jó · 🟠 ' + narancs + ' közepes · 🔴 ' + piros + ' gyenge tétel' +
+    (becsult ? ' · ⚠️ ' + becsult + ' tételnél becsült a bekerülés (ár/1,6)' : '');
 }
+nyeresegSzamol();
+
 
 function betoltesFelhobol(){
   firestoreDB.collection("bolt").doc("adatok").get().then(function(doc){
