@@ -259,7 +259,7 @@
         <div id="excel-status" style="font-size:13px; color:#555; margin-top:5px;"></div>
       </div>
       <table>
-        <thead><tr><th>Fotó</th><th>Cikkszám</th><th>Vonalkód</th><th>Név</th><th>Árak (Eredeti / Kedv.)</th><th>Bekerülés / Haszon</th><th>Készlet</th><th>Művelet</th></tr></thead>
+        <thead><tr><th>Cikkszám</th><th>Vonalkód</th><th>Név</th><th>Árak (Eredeti / Kedv.)</th><th title="Bekerülési ár és haszon. Hullám (~) = becsült.">Bek. / Haszon</th><th>Készlet</th><th>Művelet</th></tr></thead>
         <tbody id="inv-table"></tbody>
       </table>
       <button class="btn-red" style="width:100%;margin-top:15px;padding:10px;" onclick="clearAll()">🗑️ ÖSSZES TERMÉK TÖRLÉSE</button>
@@ -1179,13 +1179,6 @@ function renderInv() {
     } else {
       priceDisplay = itemPrice + ' Ft';
     }
-
-    var imgDisplay;
-    if (x.image) {
-      imgDisplay = '<img src="' + x.image + '" style="width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid #ccc;">';
-    } else {
-      imgDisplay = '<span style="color:#aaa;font-size:11px;">Nincs kép</span>';
-    }
    
             var bekHaszonDisplay;
     var bek = (x.bekter !== undefined && x.bekter !== null && !isNaN(x.bekter) && x.bekter > 0) ? x.bekter : 0;
@@ -1209,12 +1202,12 @@ function renderInv() {
 
     var tr = document.createElement('tr');
     tr.style.cssText = sorStilus;
-    tr.innerHTML = '<td>' + imgDisplay + '</td>' +
+    tr.innerHTML = 
       '<td>' + (x.sku || '-') + '</td>' +
       '<td>' + (x.code || '-') + '</td>' +
       '<td>' + (x.name || '') + '</td>' +
       '<td>' + priceDisplay + '</td>' +
-      '<td style="font-size:11px;">' + bekHaszonDisplay + '</td>' +
+      '<td style="font-size:14px;">' + bekHaszonDisplay + '</td>' +
       '<td>' + (x.stock || 0) + ' db' + (getReservedQty(x) > 0 ? ' <span class="reserved-badge" onclick="showReservedInfo(this, \'' + getReservedBy(x).replace(/'/g, "\\'") + '\')">🔒 ' + getReservedQty(x) + ' foglalt</span>' : '') + (function(){ var f = getFreeQty(x); if (f < 0) return ' <span class="free-short">⚠️ ' + f + ' hiány</span>'; if ((parseInt(x.stock, 10) || 0) === 0) return ' <span class="free-none">🚫 nincs raktáron</span>'; return ' <span class="free-ok">✅ ' + f + ' szabad</span>'; })() + '</td>' +
       '<td>' + gombok + '</td>';
     tbody.appendChild(tr);
