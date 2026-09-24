@@ -842,6 +842,7 @@ function processInvoiceText() {
     if (!name || /előleg|logisztikai/i.test(name)) return;
     if (netto <= 0) return;
     let kiskerar = Math.round(netto * INVOICE_MARKUP);
+    let bekter = netto; 
     let existing = db.find(function(p){
       return (ean && String(p.code).trim() === ean) || (sku && p.sku && String(p.sku).trim() === sku);
     });
@@ -850,9 +851,10 @@ function processInvoiceText() {
       if (sku) existing.sku = sku;
       existing.stock = (parseInt(existing.stock, 10) || 0) + qty;
       existing.price = kiskerar;
+      existing.bekter = bekter;
       updatedCount++;
     } else {
-      db.push({ sku: sku || '-', code: ean || '', name: name, price: kiskerar, discountPrice: 0, stock: qty, image: "" });
+      db.push({ sku: sku || '-', code: ean || '', name: name, price: kiskerar, bekter: bekter, discountPrice: 0, stock: qty, image: '' });
       addedCount++;
     }
   };
