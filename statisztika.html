@@ -413,10 +413,11 @@ function rajzol(){
 }
  
  function nyeresegSzamol(){
-  let db = [];
-  try { db = JSON.parse(localStorage.getItem('bolt_db')) || []; }
+  let db;
+  try { db = JSON.parse(localStorage.getItem('bolt_db')); }
   catch(e){ return; }
-  if(!Array.isArray(db)) return;
+  if(!db) return;
+  if(!Array.isArray(db)) db = Object.values(db);
 
   let bekerOssz = 0, eladOssz = 0, zold = 0, narancs = 0, piros = 0, becsult = 0;
   const sorok = [];
@@ -425,10 +426,10 @@ function rajzol(){
     const keszlet = parseInt(x.stock, 10) || 0;
     if(keszlet <= 0) return;
 
-    const eladAr = parseFloat(x.discountPrice) > 0 ? parseFloat(x.discountPrice) : parseFloat(x.price) || 0;
+    const eladAr = parseFloat(x.discountPrice) > 0 ? parseFloat(x.discountPrice) : (parseFloat(x.price) || 0);
     let bekAr = parseFloat(x.bekter);
     const vanBekter = !isNaN(bekAr) && bekAr > 0;
-    if(!vanBekter){ bekAr = Math.round(eladAr / 1.6); becsult++; } // ⚠️ becslés: ár / 1,6
+    if(!vanBekter){ bekAr = Math.round(eladAr / 1.6); becsult++; } // ⚠️ becslés
 
     const bekErtek  = bekAr * keszlet;
     const eladErtek = eladAr * keszlet;
@@ -445,17 +446,17 @@ function rajzol(){
     sorok.push({ nev: x.name || x.sku || '-', keszlet, bekErtek, eladErtek, haszon, szazalek, becsult: !vanBekter });
   });
 
-  sorok.sort(function(a,b){ return a.szazalek - b.szazalek; });
-
   document.getElementById('npKeszletErtek').textContent = fmt(bekerOssz);
   document.getElementById('npEladasiErtek').textContent = fmt(eladOssz);
   document.getElementById('npHaszon').textContent = fmt(eladOssz - bekerOssz);
 
+  sorok.sort(function(a,b){ return a.szazalek - b.szazalek; });
+
   let html = '<thead><tr><th>Tétel</th><th>Készlet</th><th>Bekerülés értéke</th><th>Eladási érték</th><th>Haszon</th><th>%</th></tr></thead><tbody>';
   sorok.forEach(function(s){
     const szin = s.szazalek >= 0.3 ? '#34d399' : (s.szazalek >= 0.1 ? '#fbbf24' : '#f87171');
-    html += '<tr><td>' + s.nev + (s.becsult ? ' <span title="Bekerülés becsült (ár/1,6)">⚠️</span>' : '') +
-            '</td><td>' + s.keszlet + '</td><td>' + fmt(s.bekErtek) + '</td><td>' + fmt(s.eladErtek) +
+    html += '<tr><td>' + s.nev + (s.becsult ? ' ⚠️' : '') + '</td><td>' + s.keszlet +
+            '</td><td>' + fmt(s.bekErtek) + '</td><td>' + fmt(s.eladErtek) +
             '</td><td style="color:' + szin + '">' + fmt(s.haszon) +
             '</td><td style="color:' + szin + '">' + Math.round(s.szazalek * 100) + '%</td></tr>';
   });
@@ -467,7 +468,6 @@ function rajzol(){
     (becsult ? ' · ⚠️ ' + becsult + ' tételnél becsült a bekerülés (ár/1,6)' : '');
 }
 nyeresegSzamol();
-
 
 function betoltesFelhobol(){
   firestoreDB.collection("bolt").doc("adatok").get().then(function(doc){
