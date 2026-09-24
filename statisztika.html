@@ -162,6 +162,17 @@
   <div class="kartya arany-k"><div class="cimke">⚡ Kártyás arány</div><div class="ertek" id="arany">–</div></div>
 </div>
 
+<div class="panel" id="nyeresegPanel">
+  <h2><span class="ikon">💰</span> Nyereség-áttekintés (készlet)</h2>
+  <div class="kartyak" style="margin-bottom:18px">
+    <div class="kartya kp"><div class="cimke">📦 Készlet értéke (bekerülés)</div><div class="ertek" id="npKeszletErtek">–</div></div>
+    <div class="kartya kartyas"><div class="cimke">🏷️ Várható eladási érték</div><div class="ertek" id="npEladasiErtek">–</div></div>
+    <div class="kartya arany-k"><div class="cimke">⚡ Várható haszon</div><div class="ertek" id="npHaszon">–</div></div>
+  </div>
+  <table id="npTabla"></table>
+  <div id="npOsszefoglal" style="margin-top:14px; font-size:10pt; color:rgba(232,228,243,.6)"></div>
+</div>
+
 <div class="panel">
   <h2><span class="ikon">📈</span> Forgalom — készpénz vs. kártya</h2>
   <div class="valto">
@@ -394,6 +405,60 @@ function rajzol(){
   html += '</tbody>';
   tabla.innerHTML = html;
  hoTerkepRajzol();
+ nyeresegSzamol();
+}
+ 
+ function nyeresegSzamol(){
+  let db = {};
+  try { db = JSON.parse(localStorage.getItem('bolt_db')) || {}; }
+  catch(e){ return; }
+
+  let bekerOssz = 0, eladOssz = 0, zold = 0, narancs = 0, piros = 0;
+  const sorok = [];
+
+  Object.keys(db).forEach(function(id){
+    const x = db[id];
+    const keszlet = Number(x.keszlet) || 0;
+    if(keszlet <= 0) return;
+    // bekerülési ár: lehet "~950" formátum is → kiszedjük a nem-szám jeleket
+    const bekter = parseFloat(String(x.bekter || '').replace('~','').replace(/[^\d.,]/g,'').replace(',','.')) || 0;
+    const ar = parseFloat(String(x.ar || '').replace(/[^\d.,]/g,'').replace(',','.')) || 0;
+
+    const bekErtek = bekter * keszlet;
+    const eladErtek = ar * keszlet;
+    const haszon = eladErtek - bekErtek;
+
+    bekerOssz += bekErtek;
+    eladOssz += eladErtek;
+
+    // zöld / narancs / piros a haszonhozside szerint
+    const haszonPerc = bekErtek > 0 ? haszon / bekErtek : 1;
+    if(haszonPerc >= 0.3) zold++;
+    else if(haszonPerc >= 0.1) narancs++;
+    else piros++;
+
+    sorok.push({nev: x.nev || x.name || id, keszlet, bekter, ar, bekErtek, eladErtek, haszon, haszonPerc});
+  });
+
+  sorok.sort(function(a,b){ return a.haszonPerc - b.haszonPerc; }); // legrosszabb elöl
+
+  document.getElementById('npKeszletErtek').textContent = fmt(bekerOssz);
+  document.getElementById('npEladasiErtek').textContent = fmt(eladOssz);
+  document.getElementById('npHaszon').textContent = fmt(eladOssz - bekerOssz);
+
+  let html = '<thead><tr><th>Tétel</th><th>Készlet</th><th>Bekerülés</th><th>Ár</th><th>Haszon</th><th>%</th></tr></thead><tbody>';
+  sorok.forEach(function(s){
+    const szin = s.haszonPerc >= 0.3 ? '#34d399' : (s.haszonPerc >= 0.1 ? '#fbbf24' : '#f87171');
+    html += '<tr><td>' + s.nev + '</td><td>' + s.keszlet + '</td><td>' + fmt(s.bekErtek) +
+            '</td><td>' + fmt(s.eladErtek) + '</td><td style="color:' + szin + '">' + fmt(s.haszon) +
+            '</td><td style="color:' + szin + '">' + Math.round(s.haszonPerc*100) + '%</td></tr>';
+  });
+  html += '</tbody>';
+  document.getElementById('npTabla').innerHTML = html;
+
+  document.getElementById('npOsszefoglal').innerHTML =
+    '🟢 ' + zold + ' jó tétel · 🟠 ' + narancs + ' közepes · 🔴 ' + piros +
+    ' gyenge (a haszon mértéke szerint, készletre vetítve)';
 }
 
 function betoltesFelhobol(){
