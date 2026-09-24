@@ -170,6 +170,7 @@
     <div class="kartya arany-k"><div class="cimke">⚡ Várható haszon</div><div class="ertek" id="npHaszon">–</div></div>
   </div>
   <table id="npTabla"></table>
+  <div id="npToggle"></div>
   <div id="npOsszefoglal" style="margin-top:14px; font-size:10pt; color:rgba(232,228,243,.6)"></div>
 </div>
 
@@ -450,22 +451,47 @@ function rajzol(){
   document.getElementById('npEladasiErtek').textContent = fmt(eladOssz);
   document.getElementById('npHaszon').textContent = fmt(eladOssz - bekerOssz);
 
-  sorok.sort(function(a,b){ return a.szazalek - b.szazalek; });
+    sorok.sort(function(a,b){ return a.szazalek - b.szazalek; }); // legrosszabb elöl
 
-  let html = '<thead><tr><th>Tétel</th><th>Készlet</th><th>Bekerülés értéke</th><th>Eladási érték</th><th>Haszon</th><th>%</th></tr></thead><tbody>';
-  sorok.forEach(function(s){
+  document.getElementById('npKeszletErtek').textContent = fmt(bekerOssz);
+  document.getElementById('npEladasiErtek').textContent = fmt(eladOssz);
+  document.getElementById('npHaszon').textContent = fmt(eladOssz - bekerOssz);
+
+  function sorHTML(s){
     const szin = s.szazalek >= 0.3 ? '#34d399' : (s.szazalek >= 0.1 ? '#fbbf24' : '#f87171');
-    html += '<tr><td>' + s.nev + (s.becsult ? ' ⚠️' : '') + '</td><td>' + s.keszlet +
-            '</td><td>' + fmt(s.bekErtek) + '</td><td>' + fmt(s.eladErtek) +
-            '</td><td style="color:' + szin + '">' + fmt(s.haszon) +
-            '</td><td style="color:' + szin + '">' + Math.round(s.szazalek * 100) + '%</td></tr>';
-  });
-  html += '</tbody>';
+    return '<tr><td>' + s.nev + (s.becsult ? ' ⚠️' : '') + '</td><td>' + s.keszlet +
+           '</td><td>' + fmt(s.bekErtek) + '</td><td>' + fmt(s.eladErtek) +
+           '</td><td style="color:' + szin + '">' + fmt(s.haszon) +
+           '</td><td style="color:' + szin + '">' + Math.round(s.szazalek * 100) + '%</td></tr>';
+  }
+
+  const MAX_LATHATO = 10;
+  const Osszes = sorok.length;
+  const eleje = sorok.slice(0, MAX_LATHATO).map(sorHTML).join('');
+  const teljes = sorok.map(sorHTML).join('');
+
+  let html = '<thead><tr><th>Tétel</th><th>Készlet</th><th>Bekerülés értéke</th><th>Eladási érték</th><th>Haszon</th><th>%</th></tr></thead><tbody id="npTorzs">' + eleje + '</tbody>';
   document.getElementById('npTabla').innerHTML = html;
+
+  // gomb a teljes lista ki/be kapcsolgatásához
+  const gombDiv = document.getElementById('npToggle');
+  if(Osszes > MAX_LATHATO){
+    gombDiv.style.display = 'block';
+    gombDiv.innerHTML = '<button id="npToggleBtn" style="background:rgba(255,255,255,.08); color:#e8e4f3; border:1px solid rgba(255,255,255,.15); border-radius:8px; padding:8px 16px; cursor:pointer; font-size:10pt; margin-top:12px">📋 Összes tétel megjelenítése (' + Osszes + ')</button>';
+    let nyitva = false;
+    document.getElementById('npToggleBtn').onclick = function(){
+      nyitva = !nyitva;
+      document.getElementById('npTorzs').innerHTML = nyitva ? teljes : eleje;
+      this.textContent = nyitva ? '⬆️ Összecsukás (csak első ' + MAX_LATHATO + ')' : '📋 Összes tétel megjelenítése (' + Osszes + ')';
+    };
+  } else {
+    gombDiv.style.display = 'none';
+  }
 
   document.getElementById('npOsszefoglal').innerHTML =
     '🟢 ' + zold + ' jó · 🟠 ' + narancs + ' közepes · 🔴 ' + piros + ' gyenge tétel' +
-    (becsult ? ' · ⚠️ ' + becsult + ' tételnél becsült a bekerülés (ár/1,6)' : '');
+    (becsult ? ' · ⚠️ ' + becsult + ' tételnél becsült a bekerülés (ár/1,6)' : '') +
+    ' · A lista a leggyengébb haszonpercent szerint rendezve';
 }
 nyeresegSzamol();
 
