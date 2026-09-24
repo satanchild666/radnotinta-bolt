@@ -843,25 +843,38 @@ function processInvoiceText() {
 
   const junkRe = /^(Eladó|Vevő|Szállító|Száll|Oldal|Elektronikus|Fizetési|Számla|Rendelés|Cikkszám|Vonalkód|Összesített|Nettó|Engedménnyel|Áfa|ÁFA|Fizetendő|azaz|A számla|Készült|Adószám|Adóigazgatási|Bank|Tel|Fax|Email|Web|Késedelmes|Kocsi|Szedő|Revizor|Megrend|Import|A csomagolás|A kiterjesztett|A jelenlegi|A 2026|Eddigi|Köszönjük|Aktuális|Megjegyzés|Számlázó|Az áru|Ügyintéző|Cégjegyzékszám|Telefon|Bankszámla|szállítási)/i;
 
-  let addProduct = function(sku, ean, name, qty, netto) {
-    if (!name || /előleg|logisztikai/i.test(name)) return;
-    if (netto <= 0) return;
-    let kiskerar = Math.round(netto * INVOICE_MARKUP);
-    let bekter = netto; 
-    let existing = db.find(function(p){
+function darabosFromName(name){
+  // "... 50 darabos ..." minta a névben
+  const m = name.match(/(\d{1,5})\s*darabos/i);
+  if(m){
+    const d = parseInt(m[1], 10);
+    if(d > 1) return d;
+  }
+  return 1; // normál darabos tétel
+}
+
+ let addProduct = function(sku, ean, name, qty, netto){
+  if (!name || /előleg|logisztikai/i.test(name)) return;
+  if (netto <= 0) return;
+
+  const csomagDb = darabosFromName(name);           // 1 csomag hány db
+  const osszDb = (parseInt(qty, 10) || 1) * csomagDb;
+  const nettoDarab = Math.round((netto * (parseInt(qty,10)||1)) / osszDb); // darabár
+  let kiskerar = Math.round(nettoDarab * INVOICE_MARKUP);
+  let bekter = nettoDarab;
       return (ean && String(p.code).trim() === ean) || (sku && p.sku && String(p.sku).trim() === sku);
     });
         if (existing) {
       if (befogadasMod === 'add') {
         if (ean) existing.code = ean;
         if (sku) existing.sku = sku;
-        existing.stock = (parseInt(existing.stock, 10) || 0) + qty;
+        existing.stock = (parseInt(existing.stock, 10) || 0) + osszDb;
         existing.price = kiskerar;
       }
       existing.bekter = bekter;
       updatedCount++;
     } else {
-      db.push({ sku: sku || '-', code: ean || '', name: name, price: kiskerar, bekter: bekter, discountPrice: 0, stock: qty, image: '' });
+      db.push({ sku: sku || '', code: ean || '', name: name, price: kiskerar, bekter: bekter, discountPrice: 0, stock: osszDb, image: '' });
       addedCount++;
     }
   };
