@@ -1186,20 +1186,20 @@ var bek = (x.bekter !== undefined && x.bekter !== null && !isNaN(x.bekter) && x.
 // Árrés-jelző pötty: 60%+ zöld, 30-60% narancs, 30% alatt piros
 function arresDot(pct) {
   var c = pct >= 60 ? 'green' : (pct >= 30 ? 'orange' : 'red');
-  return ' <span title="' + pct + '% árrés" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:' + c + ';"></span>';
+  return '<div style="text-align:center;"><span title="' + pct + '% árrés" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:' + c + ';"></span></div>';
 }
 
 if (bek > 0) {
   var haszon = itemPrice - bek;
   var haszonPct = Math.round((haszon / bek) * 100);
   var haszonSzin = haszonPct >= 60 ? 'green' : (haszonPct >= 30 ? 'orange' : 'red');
-  bekHaszonDisplay = bek + ' Ft<br><b style="color:' + haszonSzin + ';">+' + haszon + ' Ft</b>' + arresDot(haszonPct);
+  bekHaszonDisplay = bek + ' Ft<br><b style="color:' + haszonSzin + ';">+' + haszon + ' Ft</b><br>' + arresDot(haszonPct);
 } else {
   var becsBek = Math.round(itemPrice / 1.6);
   var becsHaszon = itemPrice - becsBek;
   var becsPct = becsBek > 0 ? Math.round((becsHaszon / becsBek) * 100) : 0;
   var becsSzin = becsPct >= 60 ? 'green' : (becsPct >= 30 ? 'orange' : 'red');
-  bekHaszonDisplay = '<span style="color:#888;">~' + becsBek + ' Ft</span><br><b style="color:' + becsSzin + ';">~+' + becsHaszon + ' Ft</b>' + arresDot(becsPct);
+  bekHaszonDisplay = '<span style="color:#888;">~' + becsBek + ' Ft</span><br><b style="color:' + becsSzin + ';">~+' + becsHaszon + ' Ft</b><br>' + arresDot(becsPct);
 }
 
     var sorStilus = isLow ? 'background:#f2dede;color:#a94442;font-weight:bold;' : '';
