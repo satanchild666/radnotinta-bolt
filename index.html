@@ -862,6 +862,7 @@ function darabosFromName(name){
   const nettoDarab = Math.round((netto * (parseInt(qty,10)||1)) / osszDb); // darabár
   let kiskerar = Math.round(nettoDarab * INVOICE_MARKUP);
   let bekter = nettoDarab;
+      const existing = db.find((p) => {
       return (ean && String(p.code).trim() === ean) || (sku && p.sku && String(p.sku).trim() === sku);
     });
         if (existing) {
