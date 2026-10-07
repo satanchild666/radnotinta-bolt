@@ -1283,21 +1283,44 @@ function clearManualFields() {
 }
 
 function saveManual() {
-  let sku = document.getElementById('m-sku').value.trim();
-  let c = document.getElementById('m-code').value.trim();
-  let n = document.getElementById('m-name').value.trim();
-  let p = parseInt(document.getElementById('m-price').value, 10) || 0;
-  let dp = parseInt(document.getElementById('m-discount-price').value, 10) || 0;
-  let s = parseInt(document.getElementById('m-stock').value, 10) || 0;
-  let imageInput = document.getElementById('m-image');
+    let sku = document.getElementById('m-sku').value.trim();
+    let c = document.getElementById('m-code').value.trim();
+    let n = document.getElementById('m-name').value.trim();
+    let p = parseInt(document.getElementById('m-price').value, 10) || 0;
+    let dp = parseInt(document.getElementById('m-discount-price').value, 10) || 0;
+    let s = parseInt(document.getElementById('m-stock').value, 10) || 0;
 
-  if (!c && !sku) return alert('Vonalkód vagy cikkszám kötelező!');
-  if (!n) return alert('A név kötelező!');
+    if (!c && !sku) return alert('Vonalkód vagy cikkszám kötelező!');
+    if (!n) return alert('A név kötelező!');
 
-  let existing = (editIndex !== null && db[editIndex]) ? db[editIndex]
-  : db.find(x => (c && String(x.code).trim() === c) || (sku && x.sku && String(x.sku).trim() === sku));
+    let existing = (editIndex !== null && db[editIndex]) ? db[editIndex] 
+        : db.find(x => (c && String(x.code).trim() === c) || (sku && x.sku && String(x.sku).trim() === sku));
 
- finishSaving(existing ? existing.image : "");
+    if (existing) {
+        existing.sku = sku || existing.sku;
+        existing.code = c || existing.code;
+        existing.name = n;
+        existing.price = p;
+        existing.discountPrice = dp;
+        existing.stock = s;
+    } else {
+        db.push({
+            sku: sku || '-',
+            code: c || sku || ('M' + Date.now().toString().slice(-6)),
+            name: n,
+            price: p,
+            discountPrice: dp,
+            stock: s,
+            image: ""
+        });
+    }
+
+    editIndex = null;
+    saveData();
+    clearManualFields();
+    renderInv();
+    alert("Sikeresen elmentve!");
+    if (typeof focusAddTrap === 'function') focusAddTrap();
 }
 
   function finishSaving(imgData) {
