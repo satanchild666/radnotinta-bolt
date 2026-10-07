@@ -1323,43 +1323,6 @@ function saveManual() {
     if (typeof focusAddTrap === 'function') focusAddTrap();
 }
 
-  function finishSaving(imgData) {
-    if (existing) { 
-      existing.sku = sku || existing.sku; 
-      existing.code = c || existing.code; 
-      existing.stock = s; 
-      existing.name = n; 
-      existing.price = p; 
-      existing.discountPrice = dp;
-      if (imgData) existing.image = imgData;
-    } else { 
-      db.push({ 
-        sku: sku || '-', 
-        code: c || sku || ('M' + Date.now().toString().slice(-6)), 
-        name: n, 
-        price: p, 
-        discountPrice: dp, 
-        stock: s, 
-        image: imgData || "" 
-      }); 
-    }
-    editIndex = null;
-    saveData(); 
-    clearManualFields(); 
-    renderInv(); 
-    alert("Sikeresen elmentve!"); 
-    focusAddTrap();
-  }
-
-  if (imageInput && imageInput.files && imageInput.files[0]) {
-    let reader = new FileReader();
-    reader.onload = function (e) { finishSaving(e.target.result); };
-    reader.readAsDataURL(imageInput.files[0]);
-  } else {
-    finishSaving(existing ? existing.image : "");
-  }
-}
-
 function handlePosContinuousScan(e) {
     // ===== Szkenner dupla-olvasás védelem =====
     if (e.key === 'Enter') {
