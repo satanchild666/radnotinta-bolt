@@ -924,10 +924,10 @@ function darabosFromName(name){
 
     // 4) Bevételezés
     items.forEach(function(it){
-      if (!it.ean) {
-        console.warn('⚠️ Tétel EAN nélkül, kihagyva:', it.sku, it.name);
+    if (!it.ean && !it.sku) {
+        console.warn('⚠️ Tétel EAN és cikkszám nélkül, kihagyva:', it.name);
         return;
-      }
+    }
       if (!it.netto || it.netto <= 0) {
         console.warn('⚠️ Tétel ár nélkül, kihagyva:', it.sku, it.name);
         return;
