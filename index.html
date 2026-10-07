@@ -149,6 +149,15 @@
           <span><b>Visszajáró:</b> <span id="change-amount" style="color: #d9534f; font-weight: bold; font-size: 22px;">0 Ft</span></span>
         </div>
       </div>
+     <!-- SZATYOR VÁLASZTÓ -->
+<div style="margin: 10px 0; display: flex; align-items: center; justify-content: space-between; background: #fdfdfd; padding: 8px 12px; border: 1px dashed #ccc; border-radius: 4px;">
+    <span style="font-size: 14px; color: #333;">🛍️ Szatyor hozzáadása:</span>
+    <div style="display: flex; align-items: center; gap: 8px;">
+        <button type="button" onclick="modositKosarSzatyor(-1)" style="padding: 2px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;">-</button>
+        <span id="kosar-szatyor-db" style="font-weight: bold; min-width: 20px; text-align: center;">0</span> db
+        <button type="button" onclick="modositKosarSzatyor(1)" style="padding: 2px 8px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer;">+</button>
+    </div>
+</div>
       <button class="btn-green" onclick="pay('cash')">✅ KÉSZPÉNZES FIZETÉS & LEVONÁS</button>
       <button onclick="pay('card')" style="background:#0275d8; color:white; padding:10px 15px; border:none; cursor:pointer; margin-top:5px; font-weight:bold; width:100%;">💳 Kártyás fizetés</button>
       
@@ -1747,7 +1756,18 @@ function renderCart() {
 function removeCart(i) { cart.splice(i, 1); saveData(); renderCart(); }
 
 function pay(method) { finalizeCheckout(method); }
+ 
+// Globális változó a kosárhoz tartozó szatyor számlálónak
+let kosarSzatyorDb = 0;
 
+function modositKosarSzatyor(valtozas) {
+    kosarSzatyorDb += valtozas;
+    if (kosarSzatyorDb < 0) kosarSzatyorDb = 0;
+    
+    let kijelzo = document.getElementById('kosar-szatyor-db');
+    if (kijelzo) kijelzo.innerText = kosarSzatyorDb;
+}
+ 
 function finalizeCheckout(method) {
   if (!Array.isArray(cart) || cart.length === 0) return alert("A kosár üres!");
   
@@ -1811,8 +1831,20 @@ csomagTetelek: item.isCsomag ? (() => { let c = csomagok.find(cc => String(cc.co
   });
 
 var eladottNevek = [];
-  cart.forEach(function(c){ if (eladottNevek.indexOf(c.name) === -1) eladottNevek.push(c.name); });  
-
+  cart.forEach(function(c){ if (eladottNevek.indexOf(c.name) === -1) eladottNevek.push(c.name); });
+ 
+// --- SZATYOR AUTOMATIKUS LEVONÁSA ---
+    if (kosarSzatyorDb > 0 && Array.isArray(belsoKeszlet)) {
+        let szatyorItem = belsoKeszlet.find(item => item.name && item.name.toLowerCase().includes('szatyor'));
+        if (szatyorItem) {
+            szatyorItem.stock = Math.max(0, parseInt(szatyorItem.stock || 0) - kosarSzatyorDb);
+            saveBelsoKeszlet(); // Elmenti az új belső készletet a felhőbe / localStorage-be
+        }
+        kosarSzatyorDb = 0;
+        let kijelzo = document.getElementById('kosar-szatyor-db');
+        if (kijelzo) kijelzo.innerText = '0';
+    }
+ 
   cart = [];
   saveData();
   renderCart();
