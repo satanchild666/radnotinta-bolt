@@ -160,7 +160,9 @@
 </div>
       <button class="btn-green" onclick="pay('cash')">✅ KÉSZPÉNZES FIZETÉS & LEVONÁS</button>
       <button onclick="pay('card')" style="background:#0275d8; color:white; padding:10px 15px; border:none; cursor:pointer; margin-top:5px; font-weight:bold; width:100%;">💳 Kártyás fizetés</button>
-      
+      <button onclick="pay('utalvany')" style="background: #ffc107; color: #333; font-weight: bold; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; margin-top: 5px; width: 100%;">🎫 Utalványos fizetés (5000, 2000, 1000 Ft)</button>
+      <button onclick="pay('utalvany')" style="background: #ffc107; color: #333; font-weight: bold; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; margin-top: 5px; width: 100%;">🎫 Utalványos fizetés</button>
+     
       <button type="button" id="btn-sztorno" class="btn btn-warning" onclick="sztornoAktivRendeles()" style="background:#f0ad4e; color:white; padding:10px 15px; border:none; cursor:pointer; margin-top:5px; font-weight:bold; width:100%;">
         🔄 Utolsó Rendelés Sztornózása (Vissza készletbe & módosítás)
       </button>
@@ -1770,6 +1772,28 @@ function modositKosarSzatyor(valtozas) {
  
 function finalizeCheckout(method) {
   if (!Array.isArray(cart) || cart.length === 0) return alert("A kosár üres!");
+
+    // --- ÚJ: UTALVÁNYOS FIZETÉS KEZELÉSE ---
+    if (method === 'utalvany') {
+        let v5000 = parseInt(prompt("Hány darab 5000 Ft-os utalványt kaptatok?", "0")) || 0;
+        let v2000 = parseInt(prompt("Hány darab 2000 Ft-os utalványt kaptatok?", "0")) || 0;
+        let v1000 = parseInt(prompt("Hány darab 1000 Ft-os utalványt kaptatok?", "0")) || 0;
+        
+        let osszeg = (v5000 * 5000) + (v2000 * 2000) + (v1000 * 1000);
+        
+        if (osszeg <= 0) {
+            alert("Nem adtál meg utalványt!");
+            return;
+        }
+
+        let utalvanyResszletek = { db5000: v5000, db2000: v2000, db1000: v1000, total: osszeg, date: new Date().toLocaleString('hu-HU') };
+        
+        let mentettUtalvanyok = JSON.parse(localStorage.getItem('bolt_utalvanyok') || '[]');
+        mentettUtalvanyok.push(utalvanyResszletek);
+        localStorage.setItem('bolt_utalvanyok', JSON.stringify(mentettUtalvanyok));
+        
+        alert(`Sikeres utalványos rögzítés!\nÖsszesen: ${osszeg} Ft\n(5000-es: ${v5000} db, 2000-es: ${v2000} db, 1000-es: ${v1000} db)`);
+    }
   
   let discEl = document.getElementById('pos-discount-value');
   let globalDisc = discEl ? (parseFloat(discEl.value) || 0) : 0;
@@ -1861,7 +1885,10 @@ var eladottNevek = [];
   if (changeAmtEl) changeAmtEl.innerText = '0 Ft';
   if (discEl) discEl.value = '0';
 
-  alert(method === 'card' ? "Sikeres kártyás fizetés és készletlevonás!" : "Sikeres készpénzes fizetés és készletlevonás!");
+  let fizetesSzoveg = "Sikeres készpénzes fizetés és készletlevonás!";
+if (method === 'card') fizetesSzoveg = "Sikeres kártyás fizetés és készletlevonás!";
+if (method === 'utalvany') fizetesSzoveg = "Sikeres utalványos fizetés és készletlevonás!";
+alert(fizetesSzoveg);
   focusMainTrap();
 }
 
