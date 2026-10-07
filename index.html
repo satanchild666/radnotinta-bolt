@@ -1297,6 +1297,9 @@ function saveManual() {
   let existing = (editIndex !== null && db[editIndex]) ? db[editIndex]
   : db.find(x => (c && String(x.code).trim() === c) || (sku && x.sku && String(x.sku).trim() === sku));
 
+ finishSaving(existing ? existing.image : "");
+}
+
   function finishSaving(imgData) {
     if (existing) { 
       existing.sku = sku || existing.sku; 
