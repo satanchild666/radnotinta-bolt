@@ -404,7 +404,6 @@ firebase.initializeApp(firebaseConfig);
 const firestoreDB = firebase.firestore();   // ← ÁTNEVEZVE!
 
 // Valós idejű figyelő
-(async function(){
 try {
     const docRef = firestoreDB.collection("bolt").doc("adatok");
 
