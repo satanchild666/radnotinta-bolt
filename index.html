@@ -349,11 +349,23 @@
 
 <div id="print-area" style="display:none;"></div>
 
-<!-- BELSŐ KELLEKEK TAB -->
+<!-- BELSŐ KELLÉKEK TAB -->
 <div id="kellekek" style="display:none;">
     <div class="card" style="background: #fff; border: 1px solid #c8e6c9; padding: 20px; border-radius: 8px; margin-top: 15px;">
-        <h2>📦 Belső Bolt Kellekek & Fogyóeszközök</h2>
-        <p style="color: #666; margin-bottom: 15px;">Itt tudod nyomon követni és módosítani a bolt működéséhez szükséges alapanyagokat.</p>
+        <h2>📦 Belső Bolt Kellékek & Fogyóeszközök</h2>
+        <p style="color: #666; margin-bottom: 15px;">Itt tudod nyomon követni, módosítani, valamint új elemekkel bővíteni a bolt működéséhez szükséges alapanyagokat.</p>
+        
+        <!-- ÚJ KELLÉK HOZZÁADÁSA ŰRLAP -->
+        <div style="margin-bottom: 20px; background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #ddd;">
+            <h3 style="margin-top: 0; font-size: 15px; color: #333;">➕ Új kellék / anyag felvétele</h3>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="text" id="uj-kellek-nev" placeholder="Megnevezés (pl. Csomagolópapír)" style="flex: 2; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <input type="number" id="uj-kellek-mennyiseg" placeholder="Kezdő készlet" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" value="1" min="0">
+                <input type="text" id="uj-kellek-egyseg" placeholder="Egység (pl. db, tekercs)" style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" value="db">
+                <button onclick="ujKellekHozzaadasa()" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Hozzáadás</button>
+            </div>
+        </div>
+
         <div id="belso-keszlet-lista"></div>
     </div>
 </div>
@@ -377,13 +389,13 @@ function saveBelsoKeszlet() {
     }
 }
  
-// --- BELSŐ KÉSZLET KEZELÉSE ÉS MEGJELENÍTÉSE ---
+// Frissített megjelenítő, benne a törlés gombbal
 function renderBelsoKeszlet() {
     let container = document.getElementById('belso-keszlet-lista');
     if (!container) return;
 
     let html = '<table style="width:100%; border-collapse: collapse; margin-top: 15px; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">';
-    html += '<tr style="background:#f2f2f2; text-align:left;"><th style="padding:10px;">Kellek Neve</th><th style="padding:10px;">Készlet</th><th style="padding:10px;">Mértékegység</th><th style="padding:10px;">Művelet</th></tr>';
+    html += '<tr style="background:#f2f2f2; text-align:left;"><th style="padding:10px;">Kellék Neve</th><th style="padding:10px;">Készlet</th><th style="padding:10px;">Mértékegység</th><th style="padding:10px;">Műveletek</th></tr>';
 
     belsoKeszlet.forEach((item, index) => {
         html += `<tr>
@@ -391,8 +403,9 @@ function renderBelsoKeszlet() {
             <td style="padding:10px; border-bottom:1px solid #ddd; font-weight:bold;">${item.stock}</td>
             <td style="padding:10px; border-bottom:1px solid #ddd;">${item.unit}</td>
             <td style="padding:10px; border-bottom:1px solid #ddd;">
-                <button onclick="modositBelsoKeszlet(${index}, 1)" style="padding:6px 12px; background:#28a745; color:#fff; border:none; border-radius:4px; cursor:pointer;">+</button>
-                <button onclick="modositBelsoKeszlet(${index}, -1)" style="padding:6px 12px; background:#dc3545; color:#fff; border:none; border-radius:4px; margin-left:5px; cursor:pointer;">-</button>
+                <button onclick="modositBelsoKeszlet(${index}, 1)" style="padding:6px 10px; background:#28a745; color:#fff; border:none; border-radius:4px; cursor:pointer;" title="Mennyiség növelése">+</button>
+                <button onclick="modositBelsoKeszlet(${index}, -1)" style="padding:6px 10px; background:#dc3545; color:#fff; border:none; border-radius:4px; margin-left:5px; cursor:pointer;" title="Mennyiség csökkentése">-</button>
+                <button onclick="torolBelsoKeszlet(${index})" style="padding:6px 10px; background:#6c757d; color:#fff; border:none; border-radius:4px; margin-left:5px; cursor:pointer;" title="Törlés a listából">🗑️</button>
             </td>
         </tr>`;
     });
@@ -400,6 +413,47 @@ function renderBelsoKeszlet() {
     container.innerHTML = html;
 }
 
+// Új kellék mentése a listába
+function ujKellekHozzaadasa() {
+    let nevInput = document.getElementById('uj-kellek-nev');
+    let mennyisegInput = document.getElementById('uj-kellek-mennyiseg');
+    let egysegInput = document.getElementById('uj-kellek-egyseg');
+
+    let name = nevInput.value.trim();
+    let stock = parseInt(mennyisegInput.value) || 0;
+    let unit = egysegInput.value.trim() || 'db';
+
+    if (!name) {
+        alert('Kérlek add meg a kellék nevét!');
+        return;
+    }
+
+    let newItem = {
+        id: 'bp_' + Date.now(),
+        name: name,
+        stock: stock,
+        unit: unit
+    };
+
+    belsoKeszlet.push(newItem);
+    saveBelsoKeszlet();
+    renderBelsoKeszlet();
+
+    // Mezők alaphelyzetbe állítása
+    nevInput.value = '';
+    mennyisegInput.value = '1';
+    egysegInput.value = 'db';
+}
+
+// Kellék törlése a listából
+function torolBelsoKeszlet(index) {
+    if (confirm(`Biztosan törölni szeretnéd a következőt: "${belsoKeszlet[index].name}"?`)) {
+        belsoKeszlet.splice(index, 1);
+        saveBelsoKeszlet();
+        renderBelsoKeszlet();
+    }
+}
+ 
 function modositBelsoKeszlet(index, valtozas) {
     if (belsoKeszlet[index]) {
         belsoKeszlet[index].stock = Math.max(0, belsoKeszlet[index].stock + valtozas);
