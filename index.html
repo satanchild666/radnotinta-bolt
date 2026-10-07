@@ -102,6 +102,7 @@
     <button class="tab" id="tb-inv" onclick="show('inv')">📦 Készlet</button>
     <button class="tab" id="tb-add" onclick="show('add')">➕ Új Áru</button>
     <button class="tab" id="tb-csomag" onclick="show('csomag')">🎁 Csomagok</button>
+    <button class="tab" id="tb-kellekek" onclick="show('kellekek')">📦 Bolt Kellekek</button>
 </div>
 
   <!-- ELADÁS TAB -->
@@ -348,8 +349,86 @@
 
 <div id="print-area" style="display:none;"></div>
 
+<!-- BELSŐ KELLEKEK TAB -->
+<div id="kellekek" style="display:none;">
+    <div class="card" style="background: #fff; border: 1px solid #c8e6c9; padding: 20px; border-radius: 8px; margin-top: 15px;">
+        <h2>📦 Belső Bolt Kellekek & Fogyóeszközök</h2>
+        <p style="color: #666; margin-bottom: 15px;">Itt tudod nyomon követni és módosítani a bolt működéséhez szükséges alapanyagokat.</p>
+        <div id="belso-keszlet-lista"></div>
+    </div>
+</div>
+ 
 <script>
 const INVOICE_MARKUP = 1.6; // Nettó ár szorzója — ennyiszeresére teszi a kiskeresi árat
+// --- BELSŐ BOLT KELLEKEK / FOGYÓESZKÖZÖK ---
+let belsoKeszlet = JSON.parse(localStorage.getItem('bolt_belso_keszlet')) || [
+    { id: 'bp_1', name: 'Hőpapír (Pénztárgép / Kártyaolvasó)', stock: 10, unit: 'tekercs' },
+    { id: 'bp_2', name: 'Fénymásolópapír A4', stock: 5, unit: 'csomag' },
+    { id: 'bp_3', name: 'Cellux / Ragasztószalag', stock: 5, unit: 'db' },
+    { id: 'bp_4', name: 'Ingvállas szatyor', stock: 500, unit: 'db' },
+    { id: 'bp_5', name: 'Genotherm (lefűzhető tasak)', stock: 100, unit: 'db' }
+];
+
+// Menti a belső készletet is a helyi tárhelyre és a felhőbe
+function saveBelsoKeszlet() {
+    localStorage.setItem('bolt_belso_keszlet', JSON.stringify(belsoKeszlet));
+    if (typeof saveData === 'function') {
+        saveData(); // Felküldi a Firebase Firestore-ba is
+    }
+}
+ 
+// --- BELSŐ KÉSZLET KEZELÉSE ÉS MEGJELENÍTÉSE ---
+function renderBelsoKeszlet() {
+    let container = document.getElementById('belso-keszlet-lista');
+    if (!container) return;
+
+    let html = '<table style="width:100%; border-collapse: collapse; margin-top: 15px; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">';
+    html += '<tr style="background:#f2f2f2; text-align:left;"><th style="padding:10px;">Kellek Neve</th><th style="padding:10px;">Készlet</th><th style="padding:10px;">Mértékegység</th><th style="padding:10px;">Művelet</th></tr>';
+
+    belsoKeszlet.forEach((item, index) => {
+        html += `<tr>
+            <td style="padding:10px; border-bottom:1px solid #ddd;">${item.name}</td>
+            <td style="padding:10px; border-bottom:1px solid #ddd; font-weight:bold;">${item.stock}</td>
+            <td style="padding:10px; border-bottom:1px solid #ddd;">${item.unit}</td>
+            <td style="padding:10px; border-bottom:1px solid #ddd;">
+                <button onclick="modositBelsoKeszlet(${index}, 1)" style="padding:6px 12px; background:#28a745; color:#fff; border:none; border-radius:4px; cursor:pointer;">+</button>
+                <button onclick="modositBelsoKeszlet(${index}, -1)" style="padding:6px 12px; background:#dc3545; color:#fff; border:none; border-radius:4px; margin-left:5px; cursor:pointer;">-</button>
+            </td>
+        </tr>`;
+    });
+    html += '</table>';
+    container.innerHTML = html;
+}
+
+function modositBelsoKeszlet(index, valtozas) {
+    if (belsoKeszlet[index]) {
+        belsoKeszlet[index].stock = Math.max(0, belsoKeszlet[index].stock + valtozas);
+        saveBelsoKeszlet();
+        renderBelsoKeszlet();
+    }
+}
+
+// Napi hőpapír ellenőrzés indításkor
+function ellenorizNapiHopapir() {
+    const ma = new Date().toISOString().split('T')[0];
+    const utolsoKerdes = localStorage.getItem('bolt_utolso_hopapir_kerdes');
+
+    if (utolsoKerdes !== ma) {
+        setTimeout(() => {
+            let valasz = confirm("Jó reggelt! Használtál ma / készültél fel hőpapírra a pénztárgéphez vagy a kártyaolvasóhoz?\n\n(Ha Igen, a rendszer automatikusan levon 1 tekercset a belső készletből)");
+            if (valasz) {
+                let hoPapirItem = belsoKeszlet.find(item => item.id === 'bp_1' || item.name.toLowerCase().includes('hőpapír'));
+                if (hoPapirItem && hoPapirItem.stock > 0) {
+                    hoPapirItem.stock -= 1;
+                    saveBelsoKeszlet();
+                    alert(`Hőpapír készlet frissítve. Fennmaradó készlet: ${hoPapirItem.stock} ${hoPapirItem.unit}`);
+                }
+            }
+            localStorage.setItem('bolt_utolso_hopapir_kerdes', ma);
+        }, 1000);
+    }
+}
+ 
 let db = [];
 try {
   let parsedDb = JSON.parse(localStorage.getItem('bolt_db'));
@@ -539,12 +618,14 @@ function show(tab) {
   document.getElementById('p-inv').style.display = tab==='inv'?'block':'none';
   document.getElementById('p-add').style.display = tab==='add'?'block':'none';
   document.getElementById('p-csomag').style.display = tab==='csomag'?'block':'none';
+  document.getElementById('kellekek').style.display = tab==='kellekek'?'block':'none';
 
   document.getElementById('tb-pos').className = 'tab ' + (tab==='pos'?'active':'');
   document.getElementById('tb-kassza').className = 'tab ' + (tab==='kassza'?'active':'');
   document.getElementById('tb-friends').className = 'tab ' + (tab==='friends'?'active':'');
   document.getElementById('tb-inv').className = 'tab ' + (tab==='inv'?'active':'');
   document.getElementById('tb-add').className = 'tab ' + (tab==='add'?'active':'');
+  document.getElementById('tb-kellekek').className = 'tab ' + (tab==='kellekek'?'active':'');
   document.getElementById('tb-csomag').className = 'tab ' + (tab==='csomag'?'active':'');
 
   if(tab === 'pos') { focusMainTrap(); renderCart(); }
@@ -553,6 +634,7 @@ function show(tab) {
   if(tab === 'inv') { renderInv(); focusInvTrap(); }
   if(tab === 'add') focusAddTrap();
   if(tab === 'csomag') renderCsomagLista();
+  if(tab === 'kellekek') { renderBelsoKeszlet(); }
 }
 function focusMainTrap() { setTimeout(() => { let t = document.getElementById('pos-focus-trap'); if(t) t.focus({ preventScroll: true }); }, 100); }
 function focusInvTrap() { setTimeout(() => { let t = document.getElementById('inv-focus-trap'); if(t) t.focus({ preventScroll: true }); }, 100); }
@@ -574,7 +656,7 @@ function openDay() {
     total: 0
   });
   saveData();
-
+  ellenorizNapiHopapir();
   alert("A nap sikeresen megnyitva: " + openTime);
 }
 
