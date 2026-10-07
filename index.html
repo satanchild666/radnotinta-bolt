@@ -408,55 +408,49 @@ const firestoreDB = firebase.firestore();   // ← ÁTNEVEZVE!
   try {
     const docRef = firestoreDB.collection("bolt").doc("adatok");
 
-    docRef.onSnapshot((docSnap) => {
-      if (docSnap.exists) {
-    const a = docSnap.data();
-    
-    // 1. Mentés localStorage-be ÉS a memóriabeli változók frissítése
-    if (a.db) {
-        db = a.db;
-        localStorage.setItem('bolt_db', JSON.stringify(a.db));
-    }
-    if (a.friendsOrders) {
-        friendsOrders = a.friendsOrders;
-        localStorage.setItem('bolt_friends', JSON.stringify(a.friendsOrders));
-    }
-    if (a.salesHistory) {
-        salesHistory = a.salesHistory; // <-- ITT A LÉNYEG: frissül a memóriabeli tömb is!
-        localStorage.setItem('bolt_history', JSON.stringify(a.salesHistory));
-    }
-    if (a.kassza) {
-        kassza = a.kassza;
-        localStorage.setItem('bolt_kassza', JSON.stringify(a.kassza));
-    }
-    if (a.cedula) {
-        cedula = a.cedula;
-        localStorage.setItem('bolt_cedula', JSON.stringify(a.cedula));
-    }
-    if (a.csomagok) {
-        csomagok = a.csomagok;
-        localStorage.setItem('bolt_csomagok', JSON.stringify(a.csomagok));
-    }
+docRef.onSnapshot((docSnap) => {
+    if (docSnap.exists) {
+        const a = docSnap.data();
+        
+        if (a.db) {
+            db = a.db;
+            localStorage.setItem('bolt_db', JSON.stringify(a.db));
+        }
+        if (a.friendsOrders) {
+            friendsOrders = a.friendsOrders;
+            localStorage.setItem('bolt_friends', JSON.stringify(a.friendsOrders));
+        }
+        if (a.salesHistory) {
+            salesHistory = a.salesHistory;
+            localStorage.setItem('bolt_history', JSON.stringify(a.salesHistory));
+        }
+        if (a.kassza) {
+            kassza = a.kassza;
+            localStorage.setItem('bolt_kassza', JSON.stringify(a.kassza));
+        }
+        if (a.cedula) {
+            cedula = a.cedula;
+            localStorage.setItem('bolt_cedula', JSON.stringify(a.cedula));
+        }
+        if (a.csomagok) {
+            csomagok = a.csomagok;
+            localStorage.setItem('bolt_csomagok', JSON.stringify(a.csomagok));
+        }
 
-    // 2. UI és naplók frissítése a képernyőn
-    if (typeof frissitesUI === 'function') {
-        frissitesUI();
-    }
-    if (typeof nyitasNaploRender === 'function') {
-        nyitasNaploRender(); // Ha van külön renderelő függvény a naplóra
-    }
-    
-    console.log('Adatok szinkronizálva a felhőből.');
-}
+        if (typeof frissitesUI === 'function') {
+            frissitesUI();
+        }
+        if (typeof nyitasNaploRender === 'function') {
+            nyitasNaploRender();
+        }
+        
         console.log('Adatok szinkronizálva a felhőből.');
-      } else {
+    } else {
         console.log("Még nincsenek adatok a felhőben.");
-      }
-    });
-  } catch(err) { 
-    console.error('Felhő kapcsolódási hiba:', err); 
-  }
-})();
+    }
+}, (err) => {
+    console.error('Felhő kapcsolódási hiba:', err);
+});
 
 function sanitizeData() {
   if (!Array.isArray(db)) db = [];
