@@ -1901,9 +1901,11 @@ function finalizeCheckoutCustom(method, kp, kartya, utalvany) {
     });
 
     if (!Array.isArray(salesHistory)) salesHistory = [];
-    salesHistory.push({
+     salesHistory.push({
         date: new Date().toLocaleString('hu-HU'),
-        paymentType: 'Vegyes (Kp: ' + kp + 'Ft, Kártya: ' + kartya + 'Ft, Utalvány: ' + utalvany + 'Ft)',
+        paymentType: method === 'vegyes' 
+        ? `Vegyes (Kp: ${kp} Ft, Kártya: ${kartya} Ft, Utalvány: ${utalvany} Ft)` 
+        : (method || 'Készpénz'),
         items: transactionItems,
         total: transTotal,
         utalvanyAdatok: window.utolsoUtalvanyAdat || null
