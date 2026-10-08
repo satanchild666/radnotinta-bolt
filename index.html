@@ -1815,6 +1815,10 @@ function pay(method) {
 function finalizeCheckoutWithRounding(method, kerekitettOsszeg, eredetiOsszeg) {
     if (!Array.isArray(cart) || cart.length === 0) return alert("A kosár üres!");
     
+    // Biztosítjuk, hogy számok legyenek
+    let kOsszeg = Number(kerekitettOsszeg) || 0;
+    let eOsszeg = Number(eredetiOsszeg) || 0;
+    
     let transactionItems = JSON.parse(JSON.stringify(cart));
 
     // Készlet csökkentése
@@ -1829,7 +1833,7 @@ function finalizeCheckoutWithRounding(method, kerekitettOsszeg, eredetiOsszeg) {
             }
             return;
         }
-    let dbItem = db.find(i => String(i.code).trim() === String(cartItem.code).trim() || (i.sku && String(i.sku).trim() === String(cartItem.sku).trim()));
+        let dbItem = db.find(i => String(i.code).trim() === String(cartItem.code).trim() || (i.sku && String(i.sku).trim() === String(cartItem.sku).trim()));
         if (dbItem) dbItem.stock = Math.max(0, (parseInt(dbItem.stock, 10) || 0) - (cartItem.qty || 1));
     });
 
@@ -1838,9 +1842,9 @@ function finalizeCheckoutWithRounding(method, kerekitettOsszeg, eredetiOsszeg) {
         date: new Date().toLocaleString('hu-HU'),
         paymentType: 'Készpénz (Kerekített)',
         items: transactionItems,
-        total: kerekitettOsszeg, // A kerekített összeg megy a kasszába!
-        eredetiTotal: eredetiOsszeg,
-        kerekites: kerekitettOsszeg - eredetiOsszeg
+        total: kOsszeg, // A kerekített összeg megy a kasszába és az előzményekbe!
+        eredetiTotal: eOsszeg,
+        kerekites: kOsszeg - eOsszeg
     });
 
     cart = [];
@@ -1848,10 +1852,10 @@ function finalizeCheckoutWithRounding(method, kerekitettOsszeg, eredetiOsszeg) {
     if (typeof renderCart === 'function') renderCart();
     if (typeof renderInv === 'function') renderInv();
 
-    alert(`Sikeres készpénzes fizetés!\nFizetendő (kerekítve): ${kerekitettOsszeg} Ft\n(Eredeti: ${eredetiOsszeg} Ft)`);
+    alert(`Sikeres készpénzes fizetés!\nFizetendő (kerekítve): ${kOsszeg} Ft\n(Eredeti: ${eOsszeg} Ft)`);
     if (typeof focusMainTrap === 'function') focusMainTrap();
 }
-
+ 
 function finalizeCheckoutCustom(method, kp, kartya, utalvany) {
     let transTotal = cart.reduce((sum, item) => sum + ((item.finalPrice !== undefined ? item.finalPrice : item.price) * (item.qty || 1)), 0);
     let transactionItems = JSON.parse(JSON.stringify(cart));
