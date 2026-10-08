@@ -1859,7 +1859,7 @@ function finalizeCheckoutWithRounding(method, kerekitettOsszeg, eredetiOsszeg) {
  
 function finalizeCheckoutCustom(method, kp, kartya, utalvany) {
    let transactionItems = cart.map(item => {
-        let p = (item.finalPrice !== undefined ? item.finalPrice : (item.price !== undefined ? item.price : (item.basePrice || 0)));
+        let p = item.basePrice || item.price || item.finalPrice || item.finalUnitPrice || 0;
         return {
             name: item.name,
             qty: item.qty,
