@@ -1829,7 +1829,7 @@ function finalizeCheckoutWithRounding(method, kerekitettOsszeg, eredetiOsszeg) {
             }
             return;
         }
-        let dbItem = db.find(i => String(i.code).trim() === String(cartItem.code).trim() || (i.sku && String(i.sku) === String(k.sku).trim()));
+    let dbItem = db.find(i => String(i.code).trim() === String(cartItem.code).trim() || (i.sku && String(i.sku).trim() === String(cartItem.sku).trim()));
         if (dbItem) dbItem.stock = Math.max(0, (parseInt(dbItem.stock, 10) || 0) - (cartItem.qty || 1));
     });
 
