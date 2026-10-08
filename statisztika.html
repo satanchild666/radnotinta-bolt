@@ -255,9 +255,9 @@ function adatokFeldolgozasa(nyers){
         if (!trx) return;
         if (trx.sztoronozva) return; // Sztornózottakat átugorjuk
         
-       // Megnézzük, hogy cash, card vagy vegyes-e
+       // Megnézzük, hogy cash, kartya vagy vegyes-e
     let type = trx.paymentType || 'cash';
-    if (type !== 'cash' && type !== 'card' && !type.startsWith('Vegyes')) return;
+    if (type !== 'cash' && type !== 'kartya' && !type.startsWith('Vegyes')) return;
 
     const p = huDatumParse(trx.date);
     if (!p) return;
@@ -265,15 +265,15 @@ function adatokFeldolgozasa(nyers){
     const kulcs = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 
     let kpAdd = 0;
-    let cardAdd = 0;
+    let kartyaAdd = 0;
 
     if (type.startsWith('Vegyes')) {
         let kpMatch = type.match(/Kp:\s*([0-9-]+)\s*Ft/);
-        let cardMatch = type.match(/K\u00e1rtya:\s*([0-9-]+)\s*Ft/);
+        let kartyaMatch = type.match(/K\u00e1rtya:\s*([0-9-]+)\s*Ft/);
         kpAdd = kpMatch ? parseInt(kpMatch[1], 10) || 0 : 0;
-        cardAdd = cardMatch ? parseInt(cardMatch[1], 10) || 0 : 0;
-    } else if (type === 'card') {
-        cardAdd = trx.total || 0;
+        kartyaAdd = kartyaMatch ? parseInt(kartyaMatch[1], 10) || 0 : 0;
+    } else if (type === 'kartya') {
+        kartyaAdd = trx.total || 0;
     } else {
         kpAdd = trx.total || 0;
     }
@@ -281,15 +281,15 @@ function adatokFeldolgozasa(nyers){
     let meglevo = eredmeny.find(x => x.datum === kulcs);
     if (meglevo) { 
         meglevo.kp += kpAdd; 
-        meglevo.card += cardAdd; 
+        meglevo.kartya += kartyaAdd; 
     } else { 
-        eredmeny.push({datum: kulcs, kp: kpAdd, card: cardAdd}); 
+        eredmeny.push({datum: kulcs, kp: kpAdd, kartya: kartyaAdd}); 
     }
         
         // ÓRÁS ADAT (csak ha van időpont)
         if (p.vanOra){
             if (!orankent[p.ora]) orankent[p.ora] = {ossz: 0, db: 0};
-            orankent[p.ora].ossz += (kpAdd + cardAdd);
+            orankent[p.ora].ossz += (kpAdd + kartyaAdd);
             orankent[p.ora].db++;
         }
     });
@@ -328,9 +328,9 @@ function csoportosit(modos){
       kulcs = d.datum.slice(0, 7);
       cimke = dt.getFullYear() + '. ' + (dt.getMonth() + 1) + '. hó';
     }
-    if(!csoport[kulcs]) csoport[kulcs] = {cimke: cimke, kp: 0, card: 0};
+    if(!csoport[kulcs]) csoport[kulcs] = {cimke: cimke, kp: 0, kartya: 0};
     csoport[kulcs].kp += d.kp;
-    csoport[kulcs].card += d.card;
+    csoport[kulcs].kartya += d.kartya;
   });
   return Object.values(csoport);
 }
