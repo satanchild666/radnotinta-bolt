@@ -252,9 +252,12 @@ function adatokFeldolgozasa(nyers){
   let eredmeny = [], orankent = {};
   if(Array.isArray(nyers)){
     nyers.forEach(function(trx){
-        if (!trx) return;
-       if (trx.sztoronozva || trx.isSztoronozva) return; // Sztornózottakat átugorjuk
-        
+       if (!trx) return;
+            // Sztornózott eredeti eladás kihagyása
+            if (trx.sztoronozva || trx.isSztoronozva) return;
+            // Sztornó tétel kihagyása (új rekord, negatív összeggel)
+            if (Number(trx.total || trx.vegosszeg || 0) < 0) return;
+
         let type = (trx.paymentType || 'cash').toString();
         // Elfogadjuk a sima cash-t, card-ot, vagy bármilyen vegyes / kártyás elnevezést
         let typeLower = type.toLowerCase();
