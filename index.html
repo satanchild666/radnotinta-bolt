@@ -2031,11 +2031,12 @@ salesHistory.push({
     paymentType: method,
     total: transTotal,
     items: cart.map(function(item) {
+        let unitPrice = item.basePrice || item.price || item.finalUnitPrice || 0;
         return {
             name: item.name,
             qty: item.qty,
-            finalUnitPrice: item.basePrice || item.price || item.finalUnitPrice || 0,
-            totalPrice: (item.basePrice || item.price || item.finalUnitPrice || 0) * (item.qty || 1)
+            finalUnitPrice: unitPrice,
+            totalPrice: unitPrice * (item.qty || 1)
         };
     })
 });
