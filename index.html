@@ -1106,12 +1106,12 @@ function darabosFromName(name){
       addProduct(it.sku, it.ean, it.name, it.qty, it.netto);
     });
 
-   console.log('PARSER DÖNTÉS: isVectraline =', isVectraline, '| szöveg eleje:', JSON.stringify((rawtext || '').slice(0, 200)));
+   console.log('PARSER DÖNTÉS: isVectraline =', isVectraline, '| szöveg eleje:', JSON.stringify((rawText || '').slice(0, 200)));
 
   } else {
     // ===== CORWELL (eredeti) =====
    console.log('CORWELL BLOKK ELINDULT');
-  console.log('CORWELL rawText hossz:', (rawtext||'').length, '| eleje:', JSON.stringify((rawtext||'').slice(0, 300)));
+  console.log('CORWELL rawText hossz:', (rawText||'').length, '| eleje:', JSON.stringify((rawText||'').slice(0, 300)));
 const skuRe2  = /^[A-Z]{2}[A-Z0-9]{3,6}$/;        // pl. "TVIB02"
 const eanRe2  = /^\d{13}$/;                        // "5998880347375"
 const csomRe  = /^(\d+)\s+csom$/;                  // "30 csom"
