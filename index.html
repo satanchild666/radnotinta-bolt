@@ -1109,48 +1109,36 @@ function darabosFromName(name){
    console.log('PARSER DÖNTÉS: isVectraline =', isVectraline, '| szöveg eleje:', JSON.stringify((rawText || '').slice(0, 200)));
 
   } else {
-    // ===== CORWELL (eredeti) =====
-   console.log('CORWELL BLOKK ELINDULT');
-  console.log('CORWELL rawText hossz:', (rawText||'').length, '| eleje:', JSON.stringify((rawText||'').slice(0, 2500)));
-const skuRe2  = /^[A-Z]{2}[A-Z0-9]{3,6}$/;        // pl. "TVIB02"
-const eanRe2  = /^\d{13}$/;                        // "5998880347375"
-const csomRe  = /^(\d+)\s+csom$/;                  // "30 csom"
-const dbRe    = /^([\d,]+)\s+db$/;                 // "5,000 db"
-const arRe    = /^\d[\d\s]*,\d\d$/;                // "227,00" vagy "1 490,00"
+    // ===== CORWELL (új, regex-alapú) =====
+console.log('CORWELL BLOKK ELINDULT');
+console.log('CORWELL rawText hossz:', (rawText||'').length, '| eleje:', JSON.stringify((rawText||'').slice(0, 2500)));
 
-let i = 0;
-while (i < lines.length) {
-  let tok = String(lines[i]).trim();
-  if (!skuRe2.test(tok)) { i++; continue; }
+// Terméksor minta: "96086000  30 csom  227,00  6 810,00"
+let re = /(\d{6,9})\s+(\d+)\s+(csom|db|doboz|lap|pár|karton|m|ív)\s+(\d[\d\s]*),(\d{2})\s+(\d[\d\s]*),(\d{2})/g;
+let m;
+let found = 0;
+while ((m = re.exec(rawText)) !== null) {
+  let torzskod = m[1];                                       // 96086000
+  let csomDb  = parseInt(m[2], 10);                          // 30
+  let egyseg  = m[3];                                        // csom
+  let egysegar = parseFloat(m[4].replace(/\s/g,'')) + parseFloat(m[5]) / 100;  // 227,00
+  let netto    = parseFloat(m[6].replace(/\s/g,'')) + parseFloat(m[7]) / 100;  // 6810,00
 
-  let sku = tok;
-  let qty = 0, netto = 0, ean = null, name = '';
+  // A találat UTÁNI szövegrész: ott van a "5,000 db" szorzó és az EAN
+  let after = rawText.slice(re.lastIndex, re.lastIndex + 60);
+  let dm = after.match(/(\d+,\d+)\s*db/);
+  let qty = csomDb;
+  if (dm) qty = csomDb * (parseFloat(dm[1].replace(',', '.')) || 1);  // 30 csom × 5 db = 150
 
-  // Tokenek pásztázása a következő cikkszámig
-  let j = i + 1;
-  while (j < lines.length && !skuRe2.test(String(lines[j]).trim())) {
-    let t = String(lines[j]).trim();
-    let cm = t.match(csomRe);
-    if (cm) qty += parseInt(cm[1], 10);            // "30 csom"
-    let dm = t.match(dbRe);
-    if (dm && ean) qty *= parseFloat(dm[1].replace(',', '.')) || 1;  // "5,000 db" → ×5
-    if (eanRe2.test(t)) ean = t;
-    if (!ean && !netto && arRe.test(t) && !/^\d{8}$/.test(t)) netto = parseFloat(t.replace(/\s/g, '').replace(',', '.'));
-    if (!netto && arRe.test(t)) { /* első ár az egységár */ }
-    if (t.length > 12 && !eanRe2.test(t) && !arRe.test(t) && !/%|^[\d\s,]+$/.test(t)) {
-      name += (name ? ' ' : '') + t;               // név-töredékek összefűzése
-    }
-    j++;
-  }
+  let em = after.match(/\b(\d{13})\b/);
+  let ean = em ? em[1] : null;
 
-  // Mennyiség javítása: ha volt "X csom" ÉS "Y db", akkor csom × db/csom
-  // (a fenti qty += csom, majd × db már kezeli)
+  found++;
+  console.log('TALÁLAT:', torzskod, '| qty:', qty, egyseg, '| egységár:', egysegar, '| nettó:', netto, '| EAN:', ean);
 
-  if (netto > 0) {
-    addProduct(sku, ean, name || sku, Math.round(qty) || 1, netto);
-  }
-  i = j;
+  addProduct(torzskod, ean, 'CORWELL ' + torzskod, Math.round(qty) || 1, netto);
 }
+console.log('CORWELL regex kész | találatok:', found);
   }
 
   saveData();
