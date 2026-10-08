@@ -1108,57 +1108,44 @@ function darabosFromName(name){
 
   } else {
     // ===== CORWELL (eredeti) =====
-const skuRe2  = /^[A-Z]{2}[A-Z0-9]{3,6}\b/;     // pl. TVIB02, IDPI01
-const eanRe2  = /^\d{13}\b/;                     // vonalkód-sor eleje
-const vtszRe2 = /\b(\d{8})\b/;                   // 8 jegyű VTSZ
-const csomRe  = /(\d+)\s+csom/;                  // "30 csom"
-const dbRe    = /([\d,]+)\s+db/;                 // "5,000 db"
-const arRe    = /(\d[\d\s]*,\d\d)\s*$/;          // sor végi egységár "227,00"
-console.log('PDF SOROK:', JSON.stringify(lines.slice(0, 80)));
+const skuRe2  = /^[A-Z]{2}[A-Z0-9]{3,6}$/;        // pl. "TVIB02"
+const eanRe2  = /^\d{13}$/;                        // "5998880347375"
+const csomRe  = /^(\d+)\s+csom$/;                  // "30 csom"
+const dbRe    = /^([\d,]+)\s+db$/;                 // "5,000 db"
+const arRe    = /^\d[\d\s]*,\d\d$/;                // "227,00" vagy "1 490,00"
 
 let i = 0;
 while (i < lines.length) {
-  let line = lines[i].trim();
-  let sm = line.match(skuRe2);
-  if (!sm) { i++; continue; }
+  let tok = String(lines[i]).trim();
+  if (!skuRe2.test(tok)) { i++; continue; }
 
-  // 1. sor: cikkszám + VTSZ + csom + ár
-  let sku = sm[0];
-  let csomM = line.match(csomRe);
-  let arM = line.match(arRe);
+  let sku = tok;
+  let qty = 0, netto = 0, ean = null, name = '';
 
-  // 2. sor: EAN + db/csom
-  let ean = null, dbPerCsom = 1;
-  if (i + 1 < lines.length) {
-    let next = lines[i + 1].trim();
-    let em = next.match(eanRe2);
-    if (em) {
-      ean = em[0];
-      let dm = next.match(dbRe);
-      if (dm) dbPerCsom = parseFloat(dm[1].replace(',', '.')) || 1;
-      i++;
+  // Tokenek pásztázása a következő cikkszámig
+  let j = i + 1;
+  while (j < lines.length && !skuRe2.test(String(lines[j]).trim())) {
+    let t = String(lines[j]).trim();
+    let cm = t.match(csomRe);
+    if (cm) qty += parseInt(cm[1], 10);            // "30 csom"
+    let dm = t.match(dbRe);
+    if (dm && ean) qty *= parseFloat(dm[1].replace(',', '.')) || 1;  // "5,000 db" → ×5
+    if (eanRe2.test(t)) ean = t;
+    if (!ean && !netto && arRe.test(t) && !/^\d{8}$/.test(t)) netto = parseFloat(t.replace(/\s/g, '').replace(',', '.'));
+    if (!netto && arRe.test(t)) { /* első ár az egységár */ }
+    if (t.length > 12 && !eanRe2.test(t) && !arRe.test(t) && !/%|^[\d\s,]+$/.test(t)) {
+      name += (name ? ' ' : '') + t;               // név-töredékek összefűzése
     }
+    j++;
   }
 
-  // 3. sor: terméknév
-  let name = (lines[i + 1] || '').trim();
-  if (name && !skuRe2.test(name) && !eanRe2.test(name)) {
-    i++;
-  } else {
-    name = sku;
+  // Mennyiség javítása: ha volt "X csom" ÉS "Y db", akkor csom × db/csom
+  // (a fenti qty += csom, majd × db már kezeli)
+
+  if (netto > 0) {
+    addProduct(sku, ean, name || sku, Math.round(qty) || 1, netto);
   }
-
-  // Mennyiség: csom × db/csom
-  let csom = csomM ? parseInt(csomM[1], 10) : 1;
-  let qty = Math.round(csom * dbPerCsom);
-
-  // Nettó egységár
-  let netto = arM ? parseFloat(arM[1].replace(/\s/g, '').replace(',', '.')) : 0;
-
-  if (netto > 0 && name) {
-    addProduct(sku, ean, name, qty, netto);
-  }
-  i++;
+  i = j;
 }
   }
 
