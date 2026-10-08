@@ -255,37 +255,36 @@ function adatokFeldolgozasa(nyers){
         if (!trx) return;
         if (trx.sztoronozva) return; // Sztornózottakat átugorjuk
         
-        // Megnézzük, hogy cash, kartya vagy vegyes-e
-        let type = trx.paymentType || 'cash';
-        if (type !== 'cash' && type !== 'card' && !type.startsWith('Vegyes')) return;
-        
-        const p = huDatumParse(trx.date);
-        if (!p) return;
-        const d = p.datum;
-        const kulcs = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-        
-        // Ha vegyes fizetés, kinyerjük a részösszegeket külön készpénzre és kártyára
-        let kpAdd = 0;
-        let kartyadAdd = 0;
-        
-        if (type.startsWith('Vegyes')) {
-            let kpMatch = type.match(/Kp:\s*([0-9-]+)\s*Ft/);
-            let cardMatch = type.match(/K\u00e1rtya:\s*([0-9-]+)\s*Ft/);
-            kpAdd = kpMatch ? parseInt(kpMatch[1], 10) || 0 : 0;
-            kartyaAdd = cardMatch ? parseInt(cardMatch[1], 10) || 0 : 0;
-        } else if (type === 'card') {
-            kartyaAdd = trx.total || 0;
-        } else {
-            kpAdd = trx.total || 0;
-        }
-        
-        let meglevo = eredmeny.find(x => x.datum === kulcs);
-        if (meglevo) { 
-            meglevo.kp += kpAdd; 
-            meglevo.kartya += kartyaAdd; 
-        } else { 
-            eredmeny.push({datum: kulcs, kp: kpAdd, kartya: kartyaAdd}); 
-        }
+       // Megnézzük, hogy cash, card vagy vegyes-e
+    let type = trx.paymentType || 'cash';
+    if (type !== 'cash' && type !== 'card' && !type.startsWith('Vegyes')) return;
+
+    const p = huDatumParse(trx.date);
+    if (!p) return;
+    const d = p.datum;
+    const kulcs = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+    let kpAdd = 0;
+    let cardAdd = 0;
+
+    if (type.startsWith('Vegyes')) {
+        let kpMatch = type.match(/Kp:\s*([0-9-]+)\s*Ft/);
+        let cardMatch = type.match(/K\u00e1rtya:\s*([0-9-]+)\s*Ft/);
+        kpAdd = kpMatch ? parseInt(kpMatch[1], 10) || 0 : 0;
+        cardAdd = cardMatch ? parseInt(cardMatch[1], 10) || 0 : 0;
+    } else if (type === 'card') {
+        cardAdd = trx.total || 0;
+    } else {
+        kpAdd = trx.total || 0;
+    }
+
+    let meglevo = eredmeny.find(x => x.datum === kulcs);
+    if (meglevo) { 
+        meglevo.kp += kpAdd; 
+        meglevo.card += cardAdd; 
+    } else { 
+        eredmeny.push({datum: kulcs, kp: kpAdd, card: cardAdd}); 
+    }
         
         // ÓRÁS ADAT (csak ha van időpont)
         if (p.vanOra){
