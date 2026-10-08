@@ -253,7 +253,7 @@ function adatokFeldolgozasa(nyers){
   if(Array.isArray(nyers)){
     nyers.forEach(function(trx){
         if (!trx) return;
-        if (trx.sztoronozva) return; // Sztornózottakat átugorjuk
+       if (trx.sztoronozva || trx.isSztoronozva) return; // Sztornózottakat átugorjuk
         
         let type = (trx.paymentType || 'cash').toString();
         // Elfogadjuk a sima cash-t, card-ot, vagy bármilyen vegyes / kártyás elnevezést
