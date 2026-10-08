@@ -347,7 +347,7 @@ function nezo(m){
 
 function rajzol(){
   const kpO = adatok.reduce(function(s, d){ return s + d.kp; }, 0);
-  const kaO = adatok.reduce(function(s, d){ return s + d.kartya; }, 0);
+  const kaO = adatok.reduce(function(s, d){ return s + d.card; }, 0);
   const osszO = kpO + kaO;
   document.getElementById('kpOssz').textContent =
     osszO > 0 ? fmt(kpO) + '  (' + Math.round(kpO/osszO*100) + '%)' : fmt(kpO);
@@ -365,7 +365,7 @@ function rajzol(){
   const sor = csoportosit(mod);
   const cimkek = sor.map(function(x){ return x.cimke; });
   const kpV = sor.map(function(x){ return x.kp; });
-  const kaV = sor.map(function(x){ return x.kartya; });
+  const kaV = sor.map(function(x){ return x.card; });
 
   if(typeof Chart !== 'undefined'){
     if(grafikon) grafikon.destroy();
@@ -415,8 +415,8 @@ function rajzol(){
   let html = '<thead><tr><th>Időszak</th><th>Készpénz</th><th>Kártyás</th><th>Összesen</th><th>KP %</th><th>Kártya %</th></tr></thead><tbody>';
   let osszKp = 0, osszKa = 0;
   sor.forEach(function(x){
-    const ossz = x.kp + x.kartya;
-    osszKp += x.kp; osszKa += x.kartya;
+    const ossz = x.kp + x.card;
+    osszKp += x.kp; osszKa += x.card;
     const kpSzaz = ossz > 0 ? Math.round(x.kp / ossz * 100) : 0;
     const kaSzaz = ossz > 0 ? Math.round(x.kartya / ossz * 100) : 0;
     html += '<tr><td>' + x.cimke + '</td><td>' + fmt(x.kp) + '</td><td>' + fmt(x.kartya) +
