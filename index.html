@@ -1823,7 +1823,15 @@ function finalizeCheckoutWithRounding(method, kerekitettOsszeg, eredetiOsszeg) {
     let kOsszeg = Number(kerekitettOsszeg) || 0;
     let eOsszeg = Number(eredetiOsszeg) || 0;
     
-    let transactionItems = JSON.parse(JSON.stringify(cart));
+    let transactionItems = cart.map(item => {
+    let p = item.basePrice || item.price || item.finalPrice || item.finalUnitPrice || 0;
+    return {
+        name: item.name,
+        qty: item.qty,
+        finalUnitPrice: p,
+        totalPrice: p * (item.qty || 1)
+    };
+});
 
     // Készlet csökkentése
     cart.forEach(cartItem => {
