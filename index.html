@@ -1870,7 +1870,8 @@ function finalizeCheckoutWithRounding(method, kerekitettOsszeg, eredetiOsszeg) {
     if (typeof renderInv === 'function') renderInv();
 
     alert(`Sikeres készpénzes fizetés!\nFizetendő (kerekítve): ${kOsszeg} Ft\n(Eredeti: ${eOsszeg} Ft)`);
-    if (typeof focusMainTrap === 'function') focusMainTrap();
+    if (typeof focusMainTrap === 'function') 
+    focusMainTrap();
 }
  
 function finalizeCheckoutCustom(method, kp, kartya, utalvany) {
@@ -2260,11 +2261,14 @@ function showHistoryModal() {
       payLabel = '💳 Kártyás';
       payColor = '#0275d8';
     } else if (trx.paymentType === 'day_open') {
-      payLabel = '☀️ Nap Nyitás';
-      payColor = '#ffc107';
+        payLabel = ' ☀️ Nap Nyitás';
+        payColor = '#ffc107';
     } else if (trx.paymentType === 'day_close') {
-      payLabel = '🌙 Nap Zárás';
-      payColor = '#dc3545';
+        payLabel = ' 🌙 Nap Zárás';
+        payColor = '#dc3545';
+    } else if (trx.paymentType && trx.paymentType.startsWith('Vegyes')) {
+        payLabel = ' 🧮 ' + trx.paymentType;
+        payColor = '#17a2b8';
     }
 
     var cardBg = isSztorno ? '#fff0f0' : '#fff';
