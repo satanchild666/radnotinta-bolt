@@ -548,11 +548,11 @@ oraAdatok = feld.orankent;
 }
 
 try {
-  let helyi = JSON.parse(localStorage.getItem('bolt_history'));
-  if(adatok.length === 0){
-    let feld = adatokFeldolgozasa(history);
-adatok = feld.napi;
-oraAdatok = feld.orankent;
+  let helyi = JSON.parse(localStorage.getItem('bolt_history')) || [];
+  if(adatok.length === 0 && Array.isArray(helyi) && helyi.length > 0){
+    let feld = adatokFeldolgozasa(helyi);
+    adatok = feld.napi;
+    oraAdatok = feld.orankent;
     rajzol();
   }
 } catch(e){}
