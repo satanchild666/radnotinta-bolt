@@ -1775,13 +1775,14 @@ function pay(method) {
 }
 
  function vegyesFizetes() {
+    console.log("vegyesFizetes fut!");
     if (!Array.isArray(cart) || cart.length === 0) return alert("A kosár üres!");
-    
+
     let vegosszeg = cart.reduce((sum, item) => {
         let p = item.basePrice || item.price || item.finalPrice || item.finalUnitPrice || 0;
         return sum + (p * (item.qty || 1));
     }, 0);
-  
+
     function kerekit5re(szum) {
         return Math.round(szum / 5) * 5;
     }
@@ -1792,7 +1793,7 @@ function pay(method) {
     if (utalvanyOsszeg > 0) {
         utalvanyOsszeg = kerekit5re(utalvanyOsszeg);
     }
-
+    
     let maradek1 = vegosszeg - utalvanyOsszeg;
     if (maradek1 < 0) return alert("Az utalvány összege nem lehet nagyobb a végösszegnél!");
 
