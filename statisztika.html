@@ -255,41 +255,42 @@ function adatokFeldolgozasa(nyers){
         if (!trx) return;
         if (trx.sztoronozva) return; // Sztornózottakat átugorjuk
         
-       // Megnézzük, hogy cash, kartya vagy vegyes-e
-    let type = (trx.paymentType || 'cash').toString().toLowerCase();
-    if (type !== 'cash' && !type.includes('kartya') && !type.includes('kártya') && !type.startsWith('vegyes')) return;
+        let type = (trx.paymentType || 'cash').toString();
+        // Elfogadjuk a sima cash-t, card-ot, vagy bármilyen vegyes / kártyás elnevezést
+        let typeLower = type.toLowerCase();
+        if (typeLower !== 'cash' && typeLower !== 'card' && !typeLower.includes('kártya') && !typeLower.includes('kartya') && !typeLower.startsWith('vegyes')) return;
 
-    const p = huDatumParse(trx.date);
-    if (!p) return;
-    const d = p.datum;
-    const kulcs = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        const p = huDatumParse(trx.date);
+        if (!p) return;
+        const d = p.datum;
+        const kulcs = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 
-    let kpAdd = 0;
-    let kartyaAdd = 0;
+        let kpAdd = 0;
+        let cardAdd = 0;
 
-    if (type.startsWith('Vegyes')) {
-        let kpMatch = type.match(/Kp:\s*([0-9-]+)\s*Ft/);
-        let kartyaMatch = type.match(/K\u00e1rtya:\s*([0-9-]+)\s*Ft/);
-        kpAdd = kpMatch ? parseInt(kpMatch[1], 10) || 0 : 0;
-        kartyaAdd = kartyaMatch ? parseInt(kartyaMatch[1], 10) || 0 : 0;
-    } else if (type === 'kartya') {
-        kartyaAdd = trx.total || 0;
-    } else {
-        kpAdd = trx.total || 0;
-    }
+        if (typeLower.startsWith('vegyes')) {
+            let kpMatch = type.match(/Kp:\s*([0-9-]+)\s*Ft/i);
+            let cardMatch = type.match(/K[aá]rtya:\s*([0-9-]+)\s*Ft/i);
+            kpAdd = kpMatch ? parseInt(kpMatch[1], 10) || 0 : 0;
+            cardAdd = cardMatch ? parseInt(cardMatch[1], 10) || 0 : 0;
+        } else if (typeLower === 'card' || typeLower.includes('kártya') || typeLower.includes('kartya')) {
+            cardAdd = Number(trx.total || trx.vegosszeg || 0);
+        } else {
+            kpAdd = Number(trx.total || trx.vegosszeg || 0);
+        }
 
-    let meglevo = eredmeny.find(x => x.datum === kulcs);
-    if (meglevo) { 
-        meglevo.kp += kpAdd; 
-        meglevo.kartya += kartyaAdd; 
-    } else { 
-        eredmeny.push({datum: kulcs, kp: kpAdd, kartya: kartyaAdd}); 
-    }
+        let meglevo = eredmeny.find(x => x.datum === kulcs);
+        if (meglevo) { 
+            meglevo.kp += kpAdd; 
+            meglevo.card += cardAdd; 
+        } else { 
+            eredmeny.push({datum: kulcs, kp: kpAdd, card: cardAdd}); 
+        }
         
         // ÓRÁS ADAT (csak ha van időpont)
         if (p.vanOra){
             if (!orankent[p.ora]) orankent[p.ora] = {ossz: 0, db: 0};
-            orankent[p.ora].ossz += (kpAdd + kartyaAdd);
+            orankent[p.ora].ossz += (kpAdd + cardAdd);
             orankent[p.ora].db++;
         }
     });
@@ -297,7 +298,7 @@ function adatokFeldolgozasa(nyers){
   eredmeny.sort(function(a,b){ return a.datum < b.datum ? -1 : 1; });
   return { napi: eredmeny, orankent: orankent };
 }
-
+ 
 let oraAdatok = {};
 let adatok = [];
 let mod = 'napi', grafikon = null;
@@ -328,13 +329,13 @@ function csoportosit(modos){
       kulcs = d.datum.slice(0, 7);
       cimke = dt.getFullYear() + '. ' + (dt.getMonth() + 1) + '. hó';
     }
-    if(!csoport[kulcs]) csoport[kulcs] = {cimke: cimke, kp: 0, kartya: 0};
+    if(!csoport[kulcs]) csoport[kulcs] = {cimke: cimke, kp: 0, card: 0};
     csoport[kulcs].kp += d.kp;
-    csoport[kulcs].kartya += d.kartya;
+    csoport[kulcs].card += d.card;
   });
   return Object.values(csoport);
 }
-
+ 
 function nezo(m){
   mod = m;
   document.getElementById('btnNapi').classList.toggle('aktiv', m === 'napi');
