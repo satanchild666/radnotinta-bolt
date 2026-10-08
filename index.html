@@ -1114,6 +1114,7 @@ const vtszRe2 = /\b(\d{8})\b/;                   // 8 jegyű VTSZ
 const csomRe  = /(\d+)\s+csom/;                  // "30 csom"
 const dbRe    = /([\d,]+)\s+db/;                 // "5,000 db"
 const arRe    = /(\d[\d\s]*,\d\d)\s*$/;          // sor végi egységár "227,00"
+console.log('PDF SOROK:', JSON.stringify(lines.slice(0, 80)));
 
 let i = 0;
 while (i < lines.length) {
