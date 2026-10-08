@@ -1108,48 +1108,57 @@ function darabosFromName(name){
 
   } else {
     // ===== CORWELL (eredeti) =====
-    const skuRe = /^([A-Z]{2,}[A-Z0-9\-]{1,13})(\s+\d{3,10})?$/;
-    const vtszRe = /^(\d{6,8})\s+\d+\s+(db|készlet|csom|kg|bliszter|doboz|karton|pár)\s+/;
-    const eanRe = /^\d{13}\s/;   // bármilyen 13 számjegyű EAN a sor elején
-    const techRe = /^-?\d+[,.]\d+\s+(db|készlet|csom|kg|bliszter)\s+\d+[,.]\d+\s*%/;
+const skuRe2  = /^[A-Z]{2}[A-Z0-9]{3,6}\b/;     // pl. TVIB02, IDPI01
+const eanRe2  = /^\d{13}\b/;                     // vonalkód-sor eleje
+const vtszRe2 = /\b(\d{8})\b/;                   // 8 jegyű VTSZ
+const csomRe  = /(\d+)\s+csom/;                  // "30 csom"
+const dbRe    = /([\d,]+)\s+db/;                 // "5,000 db"
+const arRe    = /(\d[\d\s]*,\d\d)\s*$/;          // sor végi egységár "227,00"
 
-    let i = 0;
-    while (i < lines.length) {
-      let m = lines[i].match(skuRe);
-      if (!m) { i++; continue; }
-      let sku = m[1];
-      let ean = null, qty = 0, unit = 'db', netto = 0;
-      let j = i + 1, nameStart = -1;
-      while (j < lines.length && j <= i + 5) {
-        if (!ean && eanRe.test(lines[j])) { ean = lines[j]; j++; continue; }
-        let vm = lines[j].match(vtszRe);
-        if (vm) {
-          qty = Math.abs(parseInt(vm[2], 10));
-          unit = vm[3];
-          let pm = vm[4].match(/^([\d\s]+),(\d+)/);
-          if (pm) netto = Math.round(parseFloat(pm[1].replace(/\s/g, '') + '.' + pm[2]));
-          j++; continue;
-        }
-        if (ean && qty > 0 && !techRe.test(lines[j])) { nameStart = j; break; }
-        j++;
-      }
-      if (ean && qty > 0 && nameStart !== -1) {
-        let nameParts = [];
-        let k = nameStart;
-        while (k < lines.length && nameParts.length < 2) {
-          let nl = lines[k];
-          if (skuRe.test(nl) || junkRe.test(nl) || techRe.test(nl) || /\d+\s+db\b/.test(nl) || /SZJ/i.test(nl)) break;
-          nameParts.push(nl);
-          k++;
-        }
-        let name = nameParts.join(' ').replace(/\s*,\s*$/, '').trim();
-        if (!name || /logisztikai|előleg|display\s*,\s*karton/i.test(name) || netto === 0) { i = k; continue; }
-        addProduct(sku, ean, name, qty, netto);
-        i = k;
-        continue;
-      }
+let i = 0;
+while (i < lines.length) {
+  let line = lines[i].trim();
+  let sm = line.match(skuRe2);
+  if (!sm) { i++; continue; }
+
+  // 1. sor: cikkszám + VTSZ + csom + ár
+  let sku = sm[0];
+  let csomM = line.match(csomRe);
+  let arM = line.match(arRe);
+
+  // 2. sor: EAN + db/csom
+  let ean = null, dbPerCsom = 1;
+  if (i + 1 < lines.length) {
+    let next = lines[i + 1].trim();
+    let em = next.match(eanRe2);
+    if (em) {
+      ean = em[0];
+      let dm = next.match(dbRe);
+      if (dm) dbPerCsom = parseFloat(dm[1].replace(',', '.')) || 1;
       i++;
     }
+  }
+
+  // 3. sor: terméknév
+  let name = (lines[i + 1] || '').trim();
+  if (name && !skuRe2.test(name) && !eanRe2.test(name)) {
+    i++;
+  } else {
+    name = sku;
+  }
+
+  // Mennyiség: csom × db/csom
+  let csom = csomM ? parseInt(csomM[1], 10) : 1;
+  let qty = Math.round(csom * dbPerCsom);
+
+  // Nettó egységár
+  let netto = arM ? parseFloat(arM[1].replace(/\s/g, '').replace(',', '.')) : 0;
+
+  if (netto > 0 && name) {
+    addProduct(sku, ean, name, qty, netto);
+  }
+  i++;
+}
   }
 
   saveData();
