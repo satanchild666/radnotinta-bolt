@@ -2206,14 +2206,31 @@ function showHistoryModal() {
       sztornoSum += (trx.total || 0);
       return;
     }
-    var type = trx.paymentType || 'cash';
-    if (type === 'card') {
-      totalCardSum += (trx.total || 0);
-      cardCount++;
-    } else if (type === 'cash') {
-      totalCashSum += (trx.total || 0);
-      cashCount++;
-    }
+   var type = trx.paymentType || 'cash';
+        if (type === 'card') {
+            totalCardSum += (trx.total || 0);
+            cardCount++;
+        } else if (type === 'cash') {
+            totalCashSum += (trx.total || 0);
+            cashCount++;
+        } else if (type.startsWith('Vegyes')) {
+            // Például: "Vegyes (Kp: 470 Ft, Kártya: 469 Ft, Utalvány: 0 Ft)"
+            // Kinyerjük a Kp és Kártya értékeit regex-szel:
+            let kpMatch = type.match(/Kp:\s*([0-9-]+)\s*Ft/);
+            let cardMatch = type.match(/Kártya:\s*([0-9-]+)\s*Ft/);
+            
+            let kpPart = kpMatch ? parseInt(kpMatch[1], 10) : 0;
+            let cardPart = cardMatch ? parseInt(cardMatch[1], 10) : 0;
+
+            if (kpPart > 0) {
+                totalCashSum += kpPart;
+                cashCount++;
+            }
+            if (cardPart > 0) {
+                totalCardSum += cardPart;
+                cardCount++;
+            }
+        }
   });
   var grandTotal = totalCashSum + totalCardSum;
 
