@@ -1757,16 +1757,17 @@ function renderCart() {
 
 function removeCart(i) { cart.splice(i, 1); saveData(); renderCart(); }
 
-function pay(method) { 
+function pay(method) {
+    if (!Array.isArray(cart) || cart.length === 0) return alert("A kosár üres!");
+
+    let eredetiOsszeg = cart.reduce((sum, item) => sum + ((item.finalPrice !== undefined ? item.finalPrice : item.price) * (item.qty || 1)), 0);
+
     if (method === 'cash') {
-        if (!Array.isArray(cart) || cart.length === 0) return alert("A kosár üres!");
-        
-        let eredetiOsszeg = cart.reduce((sum, item) => sum + ((item.finalPrice !== undefined ? item.finalPrice : item.price) * (item.qty || 1)), 0);
-        let kerekitettOsszeg = kerekit5re(eredetiOsszeg);
-        
-        finalizeCheckoutWithRounding(method, kerekitettOsszeg, eredetiOsszeg);
+        let kerekitettOsszeg = typeof kerekit5re === 'function' ? kerekit5re(eredetiOsszeg) : eredetiOsszeg;
+        finalizeCheckoutWithRounding('cash', kerekitettOsszeg, eredetiOsszeg);
     } else {
-        finalizeCheckout(method); 
+        // Kártyás vagy egyéb fizetés esetén is átadjuk az eredeti összeget
+        finalizeCheckout(method);
     }
 }
 
