@@ -1777,8 +1777,11 @@ function pay(method) {
  function vegyesFizetes() {
     if (!Array.isArray(cart) || cart.length === 0) return alert("A kosár üres!");
     
-    let vegosszeg = cart.reduce((sum, item) => sum + ((item.finalPrice !== undefined ? item.finalPrice : item.price) * (item.qty || 1)), 0);
-    
+    let vegosszeg = cart.reduce((sum, item) => {
+    let p = item.basePrice || item.price || item.finalPrice || item.finalUnitPrice || 0;
+    return sum + (p * (item.qty || 1));
+}, 0);
+  
     function kerekit5re(szum) {
         return Math.round(szum / 5) * 5;
     }
