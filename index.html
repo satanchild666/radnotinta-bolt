@@ -1858,8 +1858,16 @@ function finalizeCheckoutWithRounding(method, kerekitettOsszeg, eredetiOsszeg) {
 }
  
 function finalizeCheckoutCustom(method, kp, kartya, utalvany) {
-    let transTotal = cart.reduce((sum, item) => sum + ((item.finalPrice !== undefined ? item.finalPrice : item.price) * (item.qty || 1)), 0);
-    let transactionItems = JSON.parse(JSON.stringify(cart));
+   let transactionItems = cart.map(item => {
+        let p = (item.finalPrice !== undefined ? item.finalPrice : (item.price !== undefined ? item.price : (item.basePrice || 0)));
+        return {
+            name: item.name,
+            qty: item.qty,
+            finalUnitPrice: p,
+            totalPrice: p * (item.qty || 1)
+        };
+    });
+    let transTotal = transactionItems.reduce((sum, it) => sum + it.totalPrice, 0);
 
     cart.forEach(cartItem => {
         if (cartItem.isCsomag) {
