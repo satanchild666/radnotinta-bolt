@@ -450,6 +450,8 @@ function rajzol(){
   const sorok = [];
 
   db.forEach(function(x){
+   // Ingvállas táska kizárása a statisztikából (ingyen adják, nem valódi árubeváltás)
+if ((x.name || '').toLowerCase().includes('ingvállas') || (x.sku || '') === '19.000432') return;
     const keszlet = parseInt(x.stock, 10) || 0;
     if(keszlet <= 0) return;
 
