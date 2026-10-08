@@ -256,8 +256,8 @@ function adatokFeldolgozasa(nyers){
         if (trx.sztoronozva) return; // Sztornózottakat átugorjuk
         
        // Megnézzük, hogy cash, kartya vagy vegyes-e
-    let type = trx.paymentType || 'cash';
-    if (type !== 'cash' && type !== 'kartya' && !type.startsWith('Vegyes')) return;
+    let type = (trx.paymentType || 'cash').toString().toLowerCase();
+    if (type !== 'cash' && !type.includes('kartya') && !type.includes('kártya') && !type.startsWith('vegyes')) return;
 
     const p = huDatumParse(trx.date);
     if (!p) return;
