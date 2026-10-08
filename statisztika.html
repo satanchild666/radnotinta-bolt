@@ -296,6 +296,7 @@ function adatokFeldolgozasa(nyers){
     });
   }
   eredmeny.sort(function(a,b){ return a.datum < b.datum ? -1 : 1; });
+  eredmeny.forEach(function(x){ x.kartya = x.card; });
   return { napi: eredmeny, orankent: orankent };
 }
  
