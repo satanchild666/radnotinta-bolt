@@ -351,7 +351,7 @@ function rajzol(){
   const osszO = kpO + kaO;
   document.getElementById('kpOssz').textContent =
     osszO > 0 ? fmt(kpO) + '  (' + Math.round(kpO/osszO*100) + '%)' : fmt(kpO);
-  document.getElementById('cardOssz').textContent =
+  document.getElementById('kartyaOssz').textContent =
     osszO > 0 ? fmt(kaO) + '  (' + Math.round(kaO/osszO*100) + '%)' : fmt(kaO);
   document.getElementById('arany').textContent =
     (kpO + kaO > 0) ? Math.round(kaO / (kpO + kaO) * 100) + '%' : '–';
