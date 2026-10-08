@@ -1111,6 +1111,7 @@ function darabosFromName(name){
   } else {
     // ===== CORWELL (eredeti) =====
    console.log('CORWELL BLOKK ELINDULT');
+  console.log('CORWELL text hossz:', (text||'').length, '| eleje:', JSON.stringify((text||'').slice(0, 300)));
 const skuRe2  = /^[A-Z]{2}[A-Z0-9]{3,6}$/;        // pl. "TVIB02"
 const eanRe2  = /^\d{13}$/;                        // "5998880347375"
 const csomRe  = /^(\d+)\s+csom$/;                  // "30 csom"
