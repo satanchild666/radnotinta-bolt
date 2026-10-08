@@ -289,7 +289,7 @@ function adatokFeldolgozasa(nyers){
         // ÓRÁS ADAT (csak ha van időpont)
         if (p.vanOra){
             if (!orankent[p.ora]) orankent[p.ora] = {ossz: 0, db: 0};
-            orankent[p.ora].ossz += (kpAdd + kartyaAdd);
+            orankent[p.ora].ossz += (kpAdd + cardAdd);
             orankent[p.ora].db++;
         }
     });
@@ -328,9 +328,9 @@ function csoportosit(modos){
       kulcs = d.datum.slice(0, 7);
       cimke = dt.getFullYear() + '. ' + (dt.getMonth() + 1) + '. hó';
     }
-    if(!csoport[kulcs]) csoport[kulcs] = {cimke: cimke, kp: 0, kartya: 0};
+    if(!csoport[kulcs]) csoport[kulcs] = {cimke: cimke, kp: 0, card: 0};
     csoport[kulcs].kp += d.kp;
-    csoport[kulcs].kartya += d.kartya;
+    csoport[kulcs].card += d.card;
   });
   return Object.values(csoport);
 }
