@@ -2026,6 +2026,20 @@ var eladottNevek = [];
 if (method === 'card') fizetesSzoveg = "Sikeres kártyás fizetés és készletlevonás!";
 if (method === 'utalvany') fizetesSzoveg = "Sikeres utalványos fizetés és készletlevonás!";
 alert(fizetesSzoveg);
+salesHistory.push({
+    date: new Date().toLocaleString('hu-HU'),
+    paymentType: method,
+    total: transTotal,
+    items: cart.map(function(item) {
+        return {
+            name: item.name,
+            qty: item.qty,
+            finalUnitPrice: item.price,
+            totalPrice: item.price * item.qty
+        };
+    })
+});
+if (typeof saveSalesHistory === 'function') saveSalesHistory();
   focusMainTrap();
 }
 
