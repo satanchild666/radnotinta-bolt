@@ -1757,7 +1757,137 @@ function renderCart() {
 
 function removeCart(i) { cart.splice(i, 1); saveData(); renderCart(); }
 
-function pay(method) { finalizeCheckout(method); }
+function pay(method) { 
+    if (method === 'cash') {
+        // Ha készpénzes fizetés van, átkerekítjük a kosár végösszegét 5 Ft-ra
+        let eredetiVegosszeg = cart.reduce((sum, item) => sum + ((item.finalPrice !== undefined ? item.finalPrice : item.price) * (item.qty || 1)), 0);
+        let kerekitettVegosszeg = kerekit5re(eredetiVegosszeg);
+        
+        // Itt átadjuk a kerekített összeget a mentésnek/kiszámolásnak
+        finalizeCheckoutWithRounding(method, kerekitettVegosszeg, eredetiVegosszeg);
+    } else {
+        finalizeCheckout(method); 
+    }
+}
+
+ function vegyesFizetes() {
+    if (!Array.isArray(cart) || cart.length === 0) return alert("A kosár üres!");
+    
+    let vegosszeg = cart.reduce((sum, item) => sum + ((item.finalPrice !== undefined ? item.finalPrice : item.price) * (item.qty || 1)), 0);
+    
+    function kerekit5re(szum) {
+        return Math.round(szum / 5) * 5;
+    }
+
+    alert(`A kosár végösszege: ${vegosszeg} Ft`);
+
+    let utalvanyOsszeg = parseInt(prompt("Mennyi lesz az utalvánnyal fizetett összeg? (Ha nincs, írj 0-t):", "0")) || 0;
+    if (utalvanyOsszeg > 0) {
+        utalvanyOsszeg = kerekit5re(utalvanyOsszeg);
+    }
+
+    let maradek1 = vegosszeg - utalvanyOsszeg;
+    if (maradek1 < 0) return alert("Az utalvány összege nem lehet nagyobb a végösszegnél!");
+
+    let kpOsszeg = parseInt(prompt(`Mennyi lesz a készpénzes rész? (A fennmaradó összeg: ${maradek1} Ft):`, maradek1.toString())) || 0;
+    if (kpOsszeg > 0) {
+        kpOsszeg = kerekit5re(kpOsszeg);
+    }
+
+    let maradek2 = maradek1 - kpOsszeg;
+    let kartyaOsszeg = maradek2 > 0 ? maradek2 : 0;
+
+    let osszesitettFizetes = utalvanyOsszeg + kpOsszeg + kartyaOsszeg;
+    let elteres = vegosszeg - osszesitettFizetes;
+    if (elteres !== 0) {
+        kpOsszeg += elteres; 
+    }
+
+    let megerosites = confirm(`Fizetési összesítő:\n- Utalvány: ${utalvanyOsszeg} Ft\n- Készpénz (kerekítve): ${kpOsszeg} Ft\n- Kártya (pontos): ${kartyaOsszeg} Ft\n\nMegegyezitek a tranzakciót?`);
+    
+    if (!megerosites) return;
+
+    window.utolsoUtalvanyAdat = utalvanyOsszeg > 0 ? { total: utalvanyOsszeg, tipus: 'vegyes_utalvany' } : null;
+    
+    finalizeCheckoutCustom('vegyes', kpOsszeg, kartyaOsszeg, utalvanyOsszeg);
+}
+ 
+function finalizeCheckoutWithRounding(method, kerekitettOsszeg, eredetiOsszeg) {
+    if (!Array.isArray(cart) || cart.length === 0) return alert("A kosár üres!");
+    
+    let transactionItems = JSON.parse(JSON.stringify(cart));
+
+    // Készlet csökkentése
+    cart.forEach(cartItem => {
+        if (cartItem.isCsomag) {
+            let cs = csomagok.find(c => String(c.code) === String(cartItem.code));
+            if (cs && Array.isArray(cs.items)) {
+                cs.items.forEach(k => {
+                    let p = db.find(d => String(d.code) === String(k.code) || (d.sku && String(d.sku) === String(k.code)));
+                    if (p) p.stock = Math.max(0, (parseInt(p.stock, 10) || 0) - (k.qty || 1) * (cartItem.qty || 1));
+                });
+            }
+            return;
+        }
+        let dbItem = db.find(i => String(i.code).trim() === String(cartItem.code).trim() || (i.sku && String(i.sku) === String(k.sku).trim()));
+        if (dbItem) dbItem.stock = Math.max(0, (parseInt(dbItem.stock, 10) || 0) - (cartItem.qty || 1));
+    });
+
+    if (!Array.isArray(salesHistory)) salesHistory = [];
+    salesHistory.push({
+        date: new Date().toLocaleString('hu-HU'),
+        paymentType: 'Készpénz (Kerekített)',
+        items: transactionItems,
+        total: kerekitettOsszeg, // A kerekített összeg megy a kasszába!
+        eredetiTotal: eredetiOsszeg,
+        kerekites: kerekitettOsszeg - eredetiOsszeg
+    });
+
+    cart = [];
+    if (typeof saveData === 'function') saveData();
+    if (typeof renderCart === 'function') renderCart();
+    if (typeof renderInv === 'function') renderInv();
+
+    alert(`Sikeres készpénzes fizetés!\nFizetendő (kerekítve): ${kerekitettOsszeg} Ft\n(Eredeti: ${eredetiOsszeg} Ft)`);
+    if (typeof focusMainTrap === 'function') focusMainTrap();
+}
+
+function finalizeCheckoutCustom(method, kp, kartya, utalvany) {
+    let transTotal = cart.reduce((sum, item) => sum + ((item.finalPrice !== undefined ? item.finalPrice : item.price) * (item.qty || 1)), 0);
+    let transactionItems = JSON.parse(JSON.stringify(cart));
+
+    cart.forEach(cartItem => {
+        if (cartItem.isCsomag) {
+            let cs = csomagok.find(c => String(c.code) === String(cartItem.code));
+            if (cs && Array.isArray(cs.items)) {
+                cs.items.forEach(k => {
+                    let p = db.find(d => String(d.code) === String(k.code) || (d.sku && String(d.sku) === String(k.code)));
+                    if (p) p.stock = Math.max(0, (parseInt(p.stock, 10) || 0) - (k.qty || 1) * (cartItem.qty || 1));
+                });
+            }
+            return;
+        }
+        let dbItem = db.find(i => String(i.code).trim() === String(cartItem.code).trim() || (i.sku && String(i.sku).trim() === String(cartItem.sku).trim()));
+        if (dbItem) dbItem.stock = Math.max(0, (parseInt(dbItem.stock, 10) || 0) - (cartItem.qty || 1));
+    });
+
+    if (!Array.isArray(salesHistory)) salesHistory = [];
+    salesHistory.push({
+        date: new Date().toLocaleString('hu-HU'),
+        paymentType: 'Vegyes (Kp: ' + kp + 'Ft, Kártya: ' + kartya + 'Ft, Utalvány: ' + utalvany + 'Ft)',
+        items: transactionItems,
+        total: transTotal,
+        utalvanyAdatok: window.utolsoUtalvanyAdat || null
+    });
+
+    cart = [];
+    if (typeof saveData === 'function') saveData();
+    if (typeof renderCart === 'function') renderCart();
+    if (typeof renderInv === 'function') renderInv();
+
+    alert(`Sikeres vegyes fizetés és készletlevonás!\n- Készpénz: ${kp} Ft\n- Kártya: ${kartya} Ft\n- Utalvány: ${utalvany} Ft`);
+    if (typeof focusMainTrap === 'function') focusMainTrap();
+}
  
 // Globális változó a kosárhoz tartozó szatyor számlálónak
 let kosarSzatyorDb = 0;
@@ -1787,10 +1917,11 @@ function finalizeCheckout(method) {
         }
 
         let utalvanyResszletek = { db5000: v5000, db2000: v2000, db1000: v1000, total: osszeg, date: new Date().toLocaleString('hu-HU') };
-        
+     
         let mentettUtalvanyok = JSON.parse(localStorage.getItem('bolt_utalvanyok') || '[]');
         mentettUtalvanyok.push(utalvanyResszletek);
         localStorage.setItem('bolt_utalvanyok', JSON.stringify(mentettUtalvanyok));
+        window.utolsoUtalvanyAdat = utalvanyResszletek;
         
         alert(`Sikeres utalványos rögzítés!\nÖsszesen: ${osszeg} Ft\n(5000-es: ${v5000} db, 2000-es: ${v2000} db, 1000-es: ${v1000} db)`);
     }
@@ -1835,7 +1966,8 @@ csomagTetelek: item.isCsomag ? (() => { let c = csomagok.find(cc => String(cc.co
     date: new Date().toLocaleString('hu-HU'),
     paymentType: method,
     items: transactionItems,
-    total: transTotal
+    total: transTotal,
+    utalvanyAdatok: window.utolsoUtalvanyAdat || null
   });
 
   cart.forEach(cartItem => {
@@ -1954,6 +2086,20 @@ function sztornoTranzakcio(index) {
     tranzakcio.sztoronozva = true;
 
     localStorage.setItem('bolt_history', JSON.stringify(salesHistory));
+ // --- UTALVÁNY VISSZAVONÁSA SZTORNÓKOR ---
+    if (tranzakcio.paymentType === 'utalvany' && tranzakcio.utalvanyAdatok) {
+        let mentettUtalvanyok = JSON.parse(localStorage.getItem('bolt_utalvanyok') || '[]');
+        let indexM = mentettUtalvanyok.findIndex(u => 
+            u.db5000 === tranzakcio.utalvanyAdatok.db5000 && 
+            u.db2000 === tranzakcio.utalvanyAdatok.db2000 && 
+            u.db1000 === tranzakcio.utalvanyAdatok.db1000 && 
+            u.total === tranzakcio.utalvanyAdatok.total
+        );
+        if (indexM !== -1) {
+            mentettUtalvanyok.splice(indexM, 1);
+            localStorage.setItem('bolt_utalvanyok', JSON.stringify(mentettUtalvanyok));
+        }
+    }
 
     // 3. Kassza forgalom korrekciója készpénz esetén
     let kasszaData = JSON.parse(localStorage.getItem('bolt_kassza') || '{}');
@@ -3274,6 +3420,10 @@ focusMainTrap();
     }
 
     box.innerHTML = html;
+}
+ // --- 5 FORINTOS KEREKÍTŐ SEGÉDFÜGGVÉNY ---
+function kerekit5re(szum) {
+    return Math.round(szum / 5) * 5;
 }
 </script>
 </body>
