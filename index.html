@@ -1759,12 +1759,12 @@ function removeCart(i) { cart.splice(i, 1); saveData(); renderCart(); }
 
 function pay(method) { 
     if (method === 'cash') {
-        // Ha készpénzes fizetés van, átkerekítjük a kosár végösszegét 5 Ft-ra
-        let eredetiVegosszeg = cart.reduce((sum, item) => sum + ((item.finalPrice !== undefined ? item.finalPrice : item.price) * (item.qty || 1)), 0);
-        let kerekitettVegosszeg = kerekit5re(eredetiVegosszeg);
+        if (!Array.isArray(cart) || cart.length === 0) return alert("A kosár üres!");
         
-        // Itt átadjuk a kerekített összeget a mentésnek/kiszámolásnak
-        finalizeCheckoutWithRounding(method, kerekitettVegosszeg, eredetiVegosszeg);
+        let eredetiOsszeg = cart.reduce((sum, item) => sum + ((item.finalPrice !== undefined ? item.finalPrice : item.price) * (item.qty || 1)), 0);
+        let kerekitettOsszeg = kerekit5re(eredetiOsszeg);
+        
+        finalizeCheckoutWithRounding(method, kerekitettOsszeg, eredetiOsszeg);
     } else {
         finalizeCheckout(method); 
     }
