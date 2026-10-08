@@ -257,7 +257,7 @@ function adatokFeldolgozasa(nyers){
         
         // Megnézzük, hogy cash, kartya vagy vegyes-e
         let type = trx.paymentType || 'cash';
-        if (type !== 'cash' && type !== 'kartya' && !type.startsWith('Vegyes')) return;
+        if (type !== 'cash' && type !== 'card' && !type.startsWith('Vegyes')) return;
         
         const p = huDatumParse(trx.date);
         if (!p) return;
@@ -270,10 +270,10 @@ function adatokFeldolgozasa(nyers){
         
         if (type.startsWith('Vegyes')) {
             let kpMatch = type.match(/Kp:\s*([0-9-]+)\s*Ft/);
-            let kartyaMatch = type.match(/K\u00e1rtya:\s*([0-9-]+)\s*Ft/);
+            let cardMatch = type.match(/K\u00e1rtya:\s*([0-9-]+)\s*Ft/);
             kpAdd = kpMatch ? parseInt(kpMatch[1], 10) || 0 : 0;
-            kartyaAdd = kartyaMatch ? parseInt(kartyaMatch[1], 10) || 0 : 0;
-        } else if (type === 'kartya') {
+            kartyaAdd = cardMatch ? parseInt(cardMatch[1], 10) || 0 : 0;
+        } else if (type === 'card') {
             kartyaAdd = trx.total || 0;
         } else {
             kpAdd = trx.total || 0;
