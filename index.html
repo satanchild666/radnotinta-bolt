@@ -2034,8 +2034,8 @@ salesHistory.push({
         return {
             name: item.name,
             qty: item.qty,
-            finalUnitPrice: item.price,
-            totalPrice: item.price * item.qty
+            finalUnitPrice: item.basePrice || 0,
+            totalPrice: (item.basePrice || 0) * (item.qty || 1)
         };
     })
 });
