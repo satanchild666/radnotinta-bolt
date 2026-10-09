@@ -3257,9 +3257,10 @@ function kasszaNapEllenorzes() {
 }
  
 function renderKassza(){
+    kassza.datum = kassza.datum || null;               // ← védelem
+    kassza.nyito = kassza.nyito || 0;                  // ← védelem
+    kassza.kpForgalom = kassza.kpForgalom || 0;        // ← EZ A LÉNYEG!
     kasszaNapEllenorzes();
-    if (kassza.datum) frissitsKasszaForgalmat();  // ← csak nyitott kasszánál számol újra!
-    else kassza.kpForgalom = 0;                   // ← zárás után nulla
     initCimletTabla();
     document.getElementById('kassza-datum').textContent = kassza.datum || '— nincs nyitva —';
     document.getElementById('kassza-nyito').textContent = kassza.nyito.toLocaleString('hu-HU') + ' Ft';
