@@ -553,54 +553,53 @@ try {
     const docRef = firestoreDB.collection("bolt").doc("adatok");
 
     docRef.onSnapshot((docSnap) => {
-    if (!docSnap.exists) return;
-    const a = docSnap.data();
-
-    if (Array.isArray(a.db)) {
-        // Csak akkor írjuk felül, ha a felhő ÚJABB tartalmú,
-        // és a készletet (stock) védjük: helyileg nagyobb készletet megtartunk
-        db = a.db.map(felhoszTermek => {
-            let helyi = db.find(d => String(d.code) === String(felhoszTermek.code));
-            if (helyi && typeof helyi.stock === 'number' && typeof felhoszTermek.stock === 'number') {
-                // A kisebb készlet a valóságos (eladással csökkent)
-                felhoszTermek.stock = Math.min(helyi.stock, felhoszTermek.stock);
-            }
-            return felhoszTermek;
-        });
-        localStorage.setItem('bolt_db', JSON.stringify(db));
-    }
-            if (a.friendsOrders) {
-                friendsOrders = a.friendsOrders;
-                localStorage.setItem('bolt_friends', JSON.stringify(a.friendsOrders));
-            }
-            if (a.salesHistory) {
-                salesHistory = a.salesHistory;
-                localStorage.setItem('bolt_history', JSON.stringify(a.salesHistory));
-            }
-            if (a.kassza) {
-                kassza = a.kassza;
-                localStorage.setItem('bolt_kassza', JSON.stringify(a.kassza));
-            }
-            if (a.cedula) {
-                cedula = a.cedula;
-                localStorage.setItem('bolt_cedula', JSON.stringify(a.cedula));
-            }
-            if (a.csomagok) {
-                csomagok = a.csomagok;
-                localStorage.setItem('bolt_csomagok', JSON.stringify(a.csomagok));
-            }
-
-            if (typeof frissitesUI === 'function') {
-                frissitesUI();
-            }
-            if (typeof nyitasNaploRender === 'function') {
-                nyitasNaploRender();
-            }
-            
-            console.log('Adatok szinkronizálva a felhőből.');
-        } else {
+        if (!docSnap.exists) {
             console.log("Még nincsenek adatok a felhőben.");
+            return;
         }
+        const a = docSnap.data();
+
+        if (Array.isArray(a.db)) {
+            // Készletvédelem: a kisebb készlet a valóságos (eladással csökkent)
+            db = a.db.map(felhoszTermek => {
+                let helyi = db.find(d => String(d.code) === String(felhoszTermek.code));
+                if (helyi && typeof helyi.stock === 'number' && typeof felhoszTermek.stock === 'number') {
+                    felhoszTermek.stock = Math.min(helyi.stock, felhoszTermek.stock);
+                }
+                return felhoszTermek;
+            });
+            localStorage.setItem('bolt_db', JSON.stringify(db));
+        }
+
+        if (a.friendsOrders) {
+            friendsOrders = a.friendsOrders;
+            localStorage.setItem('bolt_friends', JSON.stringify(a.friendsOrders));
+        }
+        if (a.salesHistory) {
+            salesHistory = a.salesHistory;
+            localStorage.setItem('bolt_history', JSON.stringify(a.salesHistory));
+        }
+        if (a.kassza) {
+            kassza = a.kassza;
+            localStorage.setItem('bolt_kassza', JSON.stringify(a.kassza));
+        }
+        if (a.cedula) {
+            cedula = a.cedula;
+            localStorage.setItem('bolt_cedula', JSON.stringify(a.cedula));
+        }
+        if (a.csomagok) {
+            csomagok = a.csomagok;
+            localStorage.setItem('bolt_csomagok', JSON.stringify(a.csomagok));
+        }
+
+        if (typeof frissitesUI === 'function') {
+            frissitesUI();
+        }
+        if (typeof nyitasNaploRender === 'function') {
+            nyitasNaploRender();
+        }
+
+        console.log('Adatok szinkronizálva a felhőből.');
     }, (err) => {
         console.error('Felhő kapcsolódási hiba:', err);
     });
