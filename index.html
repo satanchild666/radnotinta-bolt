@@ -3263,9 +3263,9 @@ function renderKassza(){
     kasszaNapEllenorzes();
     initCimletTabla();
     document.getElementById('kassza-datum').textContent = kassza.datum || '— nincs nyitva —';
-    document.getElementById('kassza-nyito').textContent = kassza.nyito.toLocaleString('hu-HU') + ' Ft';
-    document.getElementById('kassza-forgalom').textContent = kassza.kpForgalom.toLocaleString('hu-HU') + ' Ft';
-    document.getElementById('kassza-elvart').textContent = (kassza.nyito + kassza.kpForgalom).toLocaleString('hu-HU') + ' Ft';
+    document.getElementById('kassza-nyito').textContent = (kassza.nyito || 0).toLocaleString('hu-HU') + ' Ft';
+    document.getElementById('kassza-forgalom').textContent = (kassza.kpForgalom || 0).toLocaleString('hu-HU') + ' Ft';
+    document.getElementById('kassza-elvart').textContent = ((kassza.nyito || 0) + (kassza.kpForgalom || 0)).toLocaleString('hu-HU') + ' Ft';
     const bontas = document.getElementById('cimlet-bontas');
     if (bontas) bontas.textContent = cimletekSzoveg();
     nyitasNaploRender();
