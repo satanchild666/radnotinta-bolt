@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script> 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter','Segoe UI',Arial,sans-serif; }
@@ -215,6 +216,10 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const firestoreDB = firebase.firestore();
+ 
+ firebase.auth().signInAnonymously()
+  .then(function(){ console.log("✅ Névtelen belépés OK"); })
+  .catch(function(h){ console.error("❌ Belépési hiba:", h.code, h.message); });
 
 const HONAPOK = ['január','február','március','április','május','június',
                  'július','augusztus','szeptember','október','november','december'];
