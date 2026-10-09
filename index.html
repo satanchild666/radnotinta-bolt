@@ -560,8 +560,10 @@ const firestoreDB = firebase.firestore();   // ← ÁTNEVEZVE!
   }
 });
 
-// Valós idejű figyelő
-try {
+// Valós idejű figyelő (a belépés UTÁN indul!)
+firebase.auth().onAuthStateChanged((user) => {
+    if (!user) return; // még nincs belépés → várunk
+    try {
     const docRef = firestoreDB.collection("bolt").doc("adatok");
 
     docRef.onSnapshot((docSnap) => {
@@ -617,7 +619,8 @@ try {
     });
 } catch (err) {
     console.error('Hiba a Firebase kapcsolatban:', err);
-}
+ }
+ });
  
 function sanitizeData() {
   if (!Array.isArray(db)) db = [];
