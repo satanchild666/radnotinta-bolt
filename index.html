@@ -2148,10 +2148,10 @@ function sztornoTranzakcio(index) {
         isSztornoJovairas: true
     };
 
-   salesHistory.push(negativTrx);
+      salesHistory.push(negativTrx);
    felhosMentes(negativTrx, -Math.abs(Number(tranzakcio.total || tranzakcio.vegosszeg || 0)));
+   // localStorage bolt_history TÖRÖLVE – a felhosMentes menti a felhőbe
 
-    localStorage.setItem('bolt_history', JSON.stringify(salesHistory));
  // --- UTALVÁNY VISSZAVONÁSA SZTORNÓKOR ---
     if (tranzakcio.paymentType === 'utalvany' && tranzakcio.utalvanyAdatok) {
         let mentettUtalvanyok = JSON.parse(localStorage.getItem('bolt_utalvanyok') || '[]');
@@ -2178,8 +2178,7 @@ function sztornoTranzakcio(index) {
     // 4. TÉTELEK VISSZATÖLTÉSE A KOSÁRBA
     cart = JSON.parse(JSON.stringify(tranzakcio.items));
 
-    // 5. Mentés és felületek frissítése
-    saveData(); 
+       // 5. Felületek frissítése (mentés a felhosMentes-ben már megtörtént)
     renderInv();
     renderCart(); // Ez rajzolja ki újra a kosarat, hogy azonnal látszódjanak a tételek!
     if (typeof renderKassza === 'function') renderKassza();
