@@ -257,6 +257,8 @@ function adatokFeldolgozasa(nyers){
       if (trx.sztoronozva || trx.isSztoronozva) return;
       // Sztornó tétel kihagyása (új rekord, negatív összeggel)
       if (Number(trx.total || trx.vegosszeg || 0) < 0) return;
+      if (trx.isSztornoJovairas || trx.felhosMentes) return;
+
 
       let type = (trx.paymentType || 'cash').toString();
       let typeLower = type.toLowerCase();
