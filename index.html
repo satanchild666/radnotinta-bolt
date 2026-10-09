@@ -2147,6 +2147,10 @@ function sztornoTranzakcio(index) {
         total: -Math.abs(Number(tranzakcio.total || tranzakcio.vegosszeg || 0)),
         isSztornoJovairas: true
     };
+ 
+// EREDETI tranzakció megjelölése sztornózként
+tranzakcio.sztoronozva = true;
+salesHistory[index] = tranzakcio;   // visszairatás a listába
 
       salesHistory.push(negativTrx);
    felhosMentes(negativTrx, -Math.abs(Number(tranzakcio.total || tranzakcio.vegosszeg || 0)));
