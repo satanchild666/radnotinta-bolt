@@ -252,50 +252,57 @@ function adatokFeldolgozasa(nyers){
   let eredmeny = [], orankent = {};
   if(Array.isArray(nyers)){
     nyers.forEach(function(trx){
-       if (!trx) return;
-            // Sztornózott eredeti eladás kihagyása
-            if (trx.sztoronozva || trx.isSztoronozva) return;
-            // Sztornó tétel kihagyása (új rekord, negatív összeggel)
-            if (Number(trx.total || trx.vegosszeg || 0) < 0) return;
+      if (!trx) return;
+      // Sztornózott eredeti eladás kihagyása
+      if (trx.sztoronozva || trx.isSztoronozva) return;
+      // Sztornó tétel kihagyása (új rekord, negatív összeggel)
+      if (Number(trx.total || trx.vegosszeg || 0) < 0) return;
 
-        let type = (trx.paymentType || 'cash').toString();
-        // Elfogadjuk a sima cash-t, card-ot, vagy bármilyen vegyes / kártyás elnevezést
-        let typeLower = type.toLowerCase();
-        if (typeLower !== 'cash' && typeLower !== 'card' && !typeLower.includes('kártya') && !typeLower.includes('kartya') && !typeLower.startsWith('vegyes')) return;
+      let type = (trx.paymentType || 'cash').toString();
+      let typeLower = type.toLowerCase();
 
-        const p = huDatumParse(trx.date);
-        if (!p) return;
-        const d = p.datum;
-        const kulcs = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      // Készpénz felismerése: cash, készpénz, keszpenz (ékezet nélkül is)
+      let isCash   = typeLower === 'cash' || typeLower.includes('készpénz') || typeLower.includes('keszpenz');
+      // Kártya felismerése: card, kártya, kartya
+      let isCard   = typeLower === 'card' || typeLower.includes('kártya') || typeLower.includes('kartya');
+      // Vegyes fizetés (pl. "Vegyes — Kp: 1000 Ft, Kártya: 500 Ft")
+      let isVegyes = typeLower.startsWith('vegyes');
 
-        let kpAdd = 0;
-        let cardAdd = 0;
+      if (!isCash && !isCard && !isVegyes) return;
 
-        if (typeLower.startsWith('vegyes')) {
-            let kpMatch = type.match(/Kp:\s*([0-9-]+)\s*Ft/i);
-            let cardMatch = type.match(/K[aá]rtya:\s*([0-9-]+)\s*Ft/i);
-            kpAdd = kpMatch ? parseInt(kpMatch[1], 10) || 0 : 0;
-            cardAdd = cardMatch ? parseInt(cardMatch[1], 10) || 0 : 0;
-        } else if (typeLower === 'card' || typeLower.includes('kártya') || typeLower.includes('kartya')) {
-            cardAdd = Number(trx.total || trx.vegosszeg || 0);
-        } else {
-            kpAdd = Number(trx.total || trx.vegosszeg || 0);
-        }
+      const p = huDatumParse(trx.date);
+      if (!p) return;
+      const d = p.datum;
+      const kulcs = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 
-        let meglevo = eredmeny.find(x => x.datum === kulcs);
-        if (meglevo) { 
-            meglevo.kp += kpAdd; 
-            meglevo.card += cardAdd; 
-        } else { 
-            eredmeny.push({datum: kulcs, kp: kpAdd, card: cardAdd}); 
-        }
-        
-        // ÓRÁS ADAT (csak ha van időpont)
-        if (p.vanOra){
-            if (!orankent[p.ora]) orankent[p.ora] = {ossz: 0, db: 0};
-            orankent[p.ora].ossz += (kpAdd + cardAdd);
-            orankent[p.ora].db++;
-        }
+      let kpAdd = 0;
+      let cardAdd = 0;
+
+      if (isVegyes) {
+        let kpMatch = type.match(/Kp:\s*([0-9-]+)\s*Ft/i);
+        let cardMatch = type.match(/K[aá]rtya:\s*([0-9-]+)\s*Ft/i);
+        kpAdd = kpMatch ? parseInt(kpMatch[1], 10) || 0 : 0;
+        cardAdd = cardMatch ? parseInt(cardMatch[1], 10) || 0 : 0;
+      } else if (isCard) {
+        cardAdd = Number(trx.total || trx.vegosszeg || 0);
+      } else {
+        kpAdd = Number(trx.total || trx.vegosszeg || 0);
+      }
+
+      let meglevo = eredmeny.find(x => x.datum === kulcs);
+      if (meglevo) {
+        meglevo.kp += kpAdd;
+        meglevo.card += cardAdd;
+      } else {
+        eredmeny.push({datum: kulcs, kp: kpAdd, card: cardAdd});
+      }
+
+      // ÓRÁS ADAT (csak ha van időpont)
+      if (p.vanOra){
+        if (!orankent[p.ora]) orankent[p.ora] = {ossz: 0, db: 0};
+        orankent[p.ora].ossz += (kpAdd + cardAdd);
+        orankent[p.ora].db++;
+      }
     });
   }
   eredmeny.sort(function(a,b){ return a.datum < b.datum ? -1 : 1; });
