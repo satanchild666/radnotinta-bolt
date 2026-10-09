@@ -738,13 +738,15 @@ function openDay() {
   localStorage.setItem('bolt_day_open', openTime);
   
   if (!Array.isArray(salesHistory)) salesHistory = [];
-  salesHistory.push({
+ const nyitasTrx2 = {
     date: openTime,
     paymentType: 'day_open',
     items: [],
     total: 0
-  });
-  saveData();
+};
+salesHistory.push(nyitasTrx2);
+felhosMentes(nyitasTrx2, 0);
+// saveData(); TÖRÖLVE
   ellenorizNapiHopapir();
   alert("A nap sikeresen megnyitva: " + openTime);
 }
@@ -759,13 +761,15 @@ function closeDay() {
   localStorage.setItem('bolt_day_closed', closeTime);
 
   if (!Array.isArray(salesHistory)) salesHistory = [];
-  salesHistory.push({
-    date: closeTime,
-    paymentType: 'day_close',
+  const nyitasTrx2 = {
+    date: openTime,
+    paymentType: 'day_open',
     items: [],
     total: 0
-  });
-  saveData();
+};
+salesHistory.push(nyitasTrx2);
+felhosMentes(nyitasTrx2, 0);
+// saveData(); TÖRÖLVE
 
   alert("A nap sikeresen lezárva: " + closeTime);
 }
@@ -1879,17 +1883,19 @@ function finalizeCheckoutWithRounding(method, kerekitettOsszeg, eredetiOsszeg) {
     });
 
     if (!Array.isArray(salesHistory)) salesHistory = [];
-    salesHistory.push({
-        date: new Date().toLocaleString('hu-HU'),
-        paymentType: 'Készpénz (Kerekített)',
-        items: transactionItems,
-        total: kOsszeg, // A kerekített összeg megy a kasszába és az előzményekbe!
-        eredetiTotal: eOsszeg,
-        kerekites: kOsszeg - eOsszeg
-    });
+   const ujEladasKp = {
+    date: new Date().toLocaleString('hu-HU'),
+    paymentType: 'Készpénz (Kerekített)',
+    items: transactionItems,
+    total: kOsszeg,
+    eredetiTotal: eOsszeg,
+    kerekites: kOsszeg - eOsszeg
+};
+salesHistory.push(ujEladasKp);
+felhosMentes(ujEladasKp, kOsszeg);   // ← kassza +kOsszeg
 
     cart = [];
-    if (typeof saveData === 'function') saveData();
+    // saveData() kiváltva a felhosMentes-szel (fent már meghívtuk)
     if (typeof renderCart === 'function') renderCart();
     if (typeof renderInv === 'function') renderInv();
 
@@ -1926,16 +1932,17 @@ function finalizeCheckoutCustom(method, kp, kartya, utalvany) {
     });
 
     if (!Array.isArray(salesHistory)) salesHistory = [];
-     salesHistory.push({
-        date: new Date().toLocaleString('hu-HU'),
-        paymentType: method === 'vegyes' 
-        ? `Vegyes (Kp: ${kp} Ft, Kártya: ${kartya} Ft, Utalvány: ${utalvany} Ft)` 
-        : (method || 'Készpénz'),
-        items: transactionItems,
-        total: transTotal,
-        utalvanyAdatok: window.utolsoUtalvanyAdat || null
-    });
-
+     const ujEladas = {
+    date: new Date().toLocaleString('hu-HU'),
+    paymentType: method === 'vegyes'
+      ? `Vegyes (Kp: kpFt,Kaˊrtya:{kp} Ft, Kártya:kpFt,Kaˊrtya:{kartya} Ft, Utalvány: ${utalvany} Ft)`
+      : (method || 'Készpénz'),
+    items: transactionItems,
+    total: transTotal,
+    utalvanyAdatok: window.utolsoUtalvanyAdat || null
+};
+salesHistory.push(ujEladas);
+felhosMentes(ujEladas, transTotal);   // ← ÚJ BIZTOS FELHŐ-MENTÉS!
     cart = [];
     if (typeof saveData === 'function') saveData();
     if (typeof renderCart === 'function') renderCart();
@@ -2018,13 +2025,15 @@ csomagTetelek: item.isCsomag ? (() => { let c = csomagok.find(cc => String(cc.co
   aktivTranzakcio.paymentType = method;
 
   if (!Array.isArray(salesHistory)) salesHistory = [];
-  salesHistory.push({
+const ujEladasF = {
     date: new Date().toLocaleString('hu-HU'),
     paymentType: method,
     items: transactionItems,
     total: transTotal,
     utalvanyAdatok: window.utolsoUtalvanyAdat || null
-  });
+};
+salesHistory.push(ujEladasF);
+felhosMentes(ujEladasF, transTotal);   // ← kassza +transTotal
 
   cart.forEach(cartItem => {
       if (cartItem.isCsomag) {
@@ -2058,7 +2067,7 @@ var eladottNevek = [];
     }
  
   cart = [];
-  saveData();
+// saveData() TÖRÖLVE – helyette a felhosMentes() fent már meghívtuk
   renderCart();
   renderInv();
   alacsonyKeszletFigyelmeztetes(eladottNevek);
@@ -2077,21 +2086,7 @@ var eladottNevek = [];
 if (method === 'card') fizetesSzoveg = "Sikeres kártyás fizetés és készletlevonás!";
 if (method === 'utalvany') fizetesSzoveg = "Sikeres utalványos fizetés és készletlevonás!";
 alert(fizetesSzoveg);
-salesHistory.push({
-    date: new Date().toLocaleString('hu-HU'),
-    paymentType: method,
-    total: transTotal,
-    items: cart.map(function(item) {
-        let unitPrice = item.basePrice || item.price || item.finalUnitPrice || 0;
-        return {
-            name: item.name,
-            qty: item.qty,
-            finalUnitPrice: unitPrice,
-            totalPrice: unitPrice * (item.qty || 1)
-        };
-    })
-});
-if (typeof saveSalesHistory === 'function') saveSalesHistory();
+
   focusMainTrap();
 }
 
@@ -2153,8 +2148,8 @@ function sztornoTranzakcio(index) {
         isSztornoJovairas: true
     };
 
-    salesHistory.push(negativTrx);
-    tranzakcio.sztoronozva = true;
+   salesHistory.push(negativTrx);
+   felhosMentes(negativTrx, -Math.abs(Number(tranzakcio.total || tranzakcio.vegosszeg || 0)));
 
     localStorage.setItem('bolt_history', JSON.stringify(salesHistory));
  // --- UTALVÁNY VISSZAVONÁSA SZTORNÓKOR ---
@@ -3271,8 +3266,9 @@ function kasszaNyitas(){
       if (db > 0) cimletek.push({ cimlet: +inp.dataset.cimlet, db: db });
   });
 
-    salesHistory.push({ date: openTime, paymentType: 'day_open', items: [], total: kassza.nyito, cimletek: cimletek });
-  saveData();
+    const nyitasTrx = { date: openTime, paymentType: 'day_open', items: [], total: kassza.nyito, cimletek: cimletek };
+salesHistory.push(nyitasTrx);
+felhosMentes(nyitasTrx, 0);   // kassza-változás 0: a nyitó összeg már benne van a kasszában
   alert('Nap nyitva! Nyito kassza: ' + kassza.nyito.toLocaleString('hu-HU') + ' Ft');
 }
 
@@ -3292,11 +3288,13 @@ function kasszaZaras(){
   html += 'Kulonbzet: <b style="color:' + szin + ';font-size:24px;">' + diffText + '</b></div>';
   document.getElementById('napzar-eredmeny').innerHTML = html;
 
-  salesHistory.push({
+  constzarasTrx = {
     date: d, paymentType: 'day_close', items: [],
     total: 0,
     kasszaInfo: { elvart: elvart, tenyleges: tenyleges, kulonbzet: diff }
-  });
+};
+salesHistory.push(zarasTrx);
+felhosMentes(zarasTrx, 0);   // zárásnál nincs kassza-mozgás, csak napló
   kassza = { datum: null, nyito: 0, kpForgalom: 0 };
   kasszaMentes();
   document.querySelectorAll('#cimlet-tbody input').forEach(function(inp){
@@ -3515,6 +3513,32 @@ focusMainTrap();
  // --- 5 FORINTOS KEREKÍTŐ SEGÉDFÜGGVÉNY ---
 function kerekit5re(szum) {
     return Math.round(szum / 5) * 5;
+}
+ 
+ // ═══════════ ÚJ BIZTOS FELHŐ-MENTÉS (több gép kompatibilis) ═══════════
+function felhosMentes(ujTranzakcio, kasszaValtozas) {
+    try {
+        const docRef = firestoreDB.collection("bolt").doc("adatok");
+        const FV = firebase.firestore.FieldValue;
+
+        const frissitesek = {};
+
+        // Új eladás HOZZÁADÁSA (nem felülírja a többi gépét!)
+        if (ujTranzakcio) {
+            frissitesek.salesHistory = FV.arrayUnion(ujTranzakcio);
+        }
+
+        // Kassza ATOMI növelés/csökkentés (+500 vagy -1000 stb.)
+        if (typeof kasszaValtozas === 'number' && kasszaValtozas !== 0) {
+            frissitesek.kassza = FV.increment(kasszaValtozas);
+        }
+
+        docRef.update(frissitesek)
+            .then(() => console.log('✅ felhő-mentés OK'))
+            .catch(e => console.error('❌ felhő-mentési hiba:', e));
+    } catch (e) {
+        console.error('❌ Firebase hiba:', e);
+    }
 }
 </script>
 </body>
