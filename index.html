@@ -2171,6 +2171,29 @@ salesHistory[index] = tranzakcio;   // visszairatás a listába
    felhosMentes(negativTrx, -Math.abs(Number(tranzakcio.total || tranzakcio.vegosszeg || 0)));
    // localStorage bolt_history TÖRÖLVE – a felhosMentes menti a felhőbe
 
+// EREDETI tranzakció sztornó-jelének felhőbe mentése
+(function jelolesFelhobe(){
+    try {
+        const docRef = firestoreDB.collection("bolt").doc("adatok");
+        docRef.get().then(doc => {
+            if (!doc.exists) return;
+            let felhLista = doc.data().salesHistory || [];
+            // Kikeressük az eredetit (id vagy index alapján) és jelöljük
+            const idx = felhLista.findIndex(t =>
+                t.date === tranzakcio.date && t.total === tranzakcio.total &&
+                !t.sztoronozva
+            );
+            if (idx !== -1) {
+                felhLista[idx].sztoronozva = true;
+                felhLista[idx].osszesen = 0;
+            }
+            docRef.update({ salesHistory: felhLista })
+                .then(() => console.log('✅ Sztornó-jelölés felhőbe mentve'))
+                .catch(e => console.error('❌ Jelölési hiba:', e));
+        });
+    } catch(e) { console.error('❌', e); }
+})();
+
  // --- UTALVÁNY VISSZAVONÁSA SZTORNÓKOR ---
     if (tranzakcio.paymentType === 'utalvany' && tranzakcio.utalvanyAdatok) {
         let mentettUtalvanyok = JSON.parse(localStorage.getItem('bolt_utalvanyok') || '[]');
