@@ -553,13 +553,22 @@ try {
     const docRef = firestoreDB.collection("bolt").doc("adatok");
 
     docRef.onSnapshot((docSnap) => {
-        if (docSnap.exists) {
-            const a = docSnap.data();
-            
-            if (a.db) {
-                db = a.db;
-                localStorage.setItem('bolt_db', JSON.stringify(a.db));
+    if (!docSnap.exists) return;
+    const a = docSnap.data();
+
+    if (Array.isArray(a.db)) {
+        // Csak akkor írjuk felül, ha a felhő ÚJABB tartalmú,
+        // és a készletet (stock) védjük: helyileg nagyobb készletet megtartunk
+        db = a.db.map(felhoszTermek => {
+            let helyi = db.find(d => String(d.code) === String(felhoszTermek.code));
+            if (helyi && typeof helyi.stock === 'number' && typeof felhoszTermek.stock === 'number') {
+                // A kisebb készlet a valóságos (eladással csökkent)
+                felhoszTermek.stock = Math.min(helyi.stock, felhoszTermek.stock);
             }
+            return felhoszTermek;
+        });
+        localStorage.setItem('bolt_db', JSON.stringify(db));
+    }
             if (a.friendsOrders) {
                 friendsOrders = a.friendsOrders;
                 localStorage.setItem('bolt_friends', JSON.stringify(a.friendsOrders));
