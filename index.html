@@ -642,31 +642,46 @@ function sanitizeData() {
 // ...és a függvény Ele 第一次 hívása (ez volt korábban is a kódban):
 sanitizeData();
 
-async function saveData() {
-  sanitizeData();
-  
-  // 1. Mentés a helyi tárhelyre
-  localStorage.setItem('bolt_db', JSON.stringify(db));
-  localStorage.setItem('bolt_cart', JSON.stringify(cart));
-  localStorage.setItem('bolt_friends', JSON.stringify(friendsOrders));
-  localStorage.setItem('bolt_history', JSON.stringify(salesHistory));
-  localStorage.setItem('bolt_csomagok', JSON.stringify(csomagok));
+let _saveTimer = null;
+let _felhoMentesSzamlalo = 0; // teszteléshez
 
-  // 2. Mentés a Firebase felhőbe
-  try {
-    await firestoreDB.collection("bolt").doc("adatok").set({
-      db: db,
-      friendsOrders: friendsOrders,
-      salesHistory: salesHistory,
-      kassza: JSON.parse(localStorage.getItem('bolt_kassza') || '{}'),
-      cedula: JSON.parse(localStorage.getItem('bolt_cedula') || '{}'),
-      csomagok: csomagok,
-      mentesIdeje: new Date().toLocaleString()
-    });
-    console.log("Adatok sikeresen felküldve a felhőbe!");
-  } catch (err) {
-    console.error("Hiba a felhőbe mentés során:", err);
-  }
+async function saveDataAzonnal() {
+    sanitizeData();
+
+    // 1. Mentés a helyi tárhelyre (ez olcsó, ez maradhat gyakori)
+    localStorage.setItem('bolt_db', JSON.stringify(db));
+    localStorage.setItem('bolt_cart', JSON.stringify(cart));
+    localStorage.setItem('bolt_friends', JSON.stringify(friendsOrders));
+    localStorage.setItem('bolt_history', JSON.stringify(salesHistory));
+    localStorage.setItem('bolt_csomagok', JSON.stringify(csomagok));
+
+    // 2. Mentés a Firebase felhőbe – DEBOUNCE-olva
+    try {
+        await firestoreDB.collection("bolt").doc("adatok").set({
+            db: db,
+            friendsOrders: friendsOrders,
+            salesHistory: salesHistory,
+            kassza: JSON.parse(localStorage.getItem('bolt_kassza') || '{}'),
+            cedula: JSON.parse(localStorage.getItem('bolt_cedula') || '{}'),
+            csomagok: csomagok,
+            mentesIdeje: new Date().toLocaleString()
+        });
+        _felhoMentesSzamlalo++;
+        console.log('☁️ Felhőmentés #' + _felhoMentesSzamlalo);
+    } catch (err) {
+        console.error("Hiba a felhőbe mentés során:", err);
+        // Sávszélesség-hiba esetén ütemezett újrapróbálás
+        if (String(err).includes('resource-exhausted')) {
+            console.warn('⏳ Keret kimerült – 60 mp múlva újrapróbálom...');
+            setTimeout(saveDataAzonnal, 60000);
+        }
+    }
+}
+
+// A többi kód továbbra is a saveData()-t hívja – nem kell átírni semmit máshol!
+function saveData() {
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(saveDataAzonnal, 3000); // 3 mp összegyűjtési ablak
 }
 
 function playBeep() {
